@@ -1314,18 +1314,20 @@ async function createStudyGroup(){
   const name=$("newGroupName").value.trim();
   if(!name)return notify("Bitte Gruppenname eingeben.");
   const button=$("createGroupSubmit");button.disabled=true;
-  let stage="Anmeldung prüfen",groupId=null;
+  let stage="Anmeldung prüfen",groupId=null,groupCreated=false;
   try{
     const {data:authData,error:authError}=await _supabase.auth.getUser();
     if(authError)throw authError;
     const verifiedEmail=String(authData?.user?.email||"").trim().toLowerCase();
     if(!verifiedEmail||!authData?.user?.id)throw Error("Keine gültige Sitzung. Bitte neu anmelden.");
+    // Die ID vorab erzeugen: Lesen ist unter Umständen erst nach dem
+    // Eintragen der Mitgliedschaft durch die RLS-Regeln erlaubt.
+    groupId=crypto.randomUUID();
     stage="Lerngruppe in study_groups erstellen";
-    const {data,error}=await _supabase.from("study_groups")
-      .insert([{name,creator_email:verifiedEmail}]).select("id").single();
+    const {error}=await _supabase.from("study_groups")
+      .insert([{id:groupId,name,creator_email:verifiedEmail}]);
     if(error)throw error;
-    if(!data?.id)throw Error("Keine Gruppen-ID zurückgegeben.");
-    groupId=data.id;
+    groupCreated=true;
     stage="Ersteller als Gruppenmitglied eintragen";
     const memberResult=await _supabase.from("study_group_members").insert([{
       group_id:groupId,user_email:verifiedEmail,
@@ -1336,7 +1338,7 @@ async function createStudyGroup(){
     await loadStudyGroups();notify("Lerngruppe erfolgreich erstellt!");
   }catch(err){
     console.error("Lerngruppe erstellen:",stage,err);
-    if(groupId){const cleanup=await _supabase.from("study_groups").delete().eq("id",groupId);
+    if(groupCreated){const cleanup=await _supabase.from("study_groups").delete().eq("id",groupId);
       if(cleanup.error)console.warn("Unvollständige Gruppe konnte nicht gelöscht werden",cleanup.error);}
     alert("Lerngruppe fehlgeschlagen\nSchritt: "+stage+"\nFehlercode: "+(err.code||"unbekannt")+"\nMeldung: "+(err.message||err));
   }finally{button.disabled=false;}
