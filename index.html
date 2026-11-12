@@ -1438,28 +1438,65 @@ document.addEventListener("click", async e=>{
 async function loadCloudSignals(){
   if(!currentUser)return;
   try{
-    const {data}=await _supabase.from("signals").select("*").eq("user_id",currentUser.id);
+    const {data,error}=await _supabase.from("signals").select("*").eq("user_id",currentUser.id);
+    if(error)throw error;
     signals=data||[];
     renderList();
     nextLearn();
-  }catch(err){}
+  }catch(err){notify("Signale konnten nicht geladen werden: "+err.message);}
 }
 
 async function saveSignal(){
+  if(!currentUser)return notify("Bitte zuerst anmelden.");
   const id=$("editId").value;
   const short=$("shortName").value.trim();
   const long=$("longName").value.trim();
   const meaning=$("meaning").value.trim();
   const category=$("category").value||"Sonstige";
-  if(!short||!long||!meaning)return notify("Bitte alle Felder ausfüllen.");
-  const imageValue=tempImageBase64||$("imageUrl").value.trim();
+  if(!short||!long||!meaning)return notify("Bitte alle drei Textfelder ausfüllen.");
+  const previous=id?signals.find(s=>String(s.id)===String(id)):null;
+  if(id&&!previous)return notify("Das Signal wurde nicht gefunden. Bitte neu laden.");
+  const imageValue=tempImageBase64||$("imageUrl").value.trim()||(previous?.image||"");
   const payload={short,long,meaning,category,image:imageValue,user_id:currentUser.id};
-  if(id)await _supabase.from("signals").update(payload).eq("id",id);
+  const button=$("saveSignal");
+  button.disabled=true;
+  try{
+    const query=id
+      ?_supabase.from("signals").update(payload).eq("id",id).eq("user_id",currentUser.id).select("id")
+      :_supabase.from("signals").insert([payload]).select("id");
+    const {data,error}=await query;
+    if(error)throw error;
+    if(!data||!data.length)throw new Error("Keine Änderung gespeichert. Bitte Zugriffsrechte prüfen.");
+    clearForm();
+    await loadCloudSignals();
+    notify(id?"Signal erfolgreich aktualisiert!":"Signal erfolgreich gespeichert!");
+  }catch(err){
+    console.error("Signal speichern:",err);
+    notify("Speichern fehlgeschlagen: "+(err.message||err));
+  }finally{button.disabled=false;}
+}
 
-  else await _supabase.from("signals").insert([payload]);
-  clearForm();
-  loadCloudSignals();
-  notify("Signal gespeichert!");
+function editSignal(id){
+  const signal=signals.find(s=>String(s.id)===String(id));
+  if(!signal)return notify("Signal nicht gefunden.");
+  $("editId").value=signal.id;
+  $("shortName").value=signal.short||"";
+  $("longName").value=signal.long||"";
+  $("meaning").value=signal.meaning||"";
+  const category=$("category");
+  if(signal.category&&!Array.from(category.options).some(o=>o.value===signal.category)){
+    category.add(new Option(signal.category,signal.category));
+  }
+  category.value=signal.category||"Sonstige";
+  $("imageUrl").value=signal.image?.startsWith("data:")?"":(signal.image||"");
+  tempImageBase64="";
+  $("imageFile").value="";
+  $("cameraFile").value="";
+  $("formTitle").textContent="✏️ Signal bearbeiten";
+  $("saveSignal").textContent="Änderungen speichern";
+  $("clearForm").textContent="Bearbeiten abbrechen";
+  $("formTitle").scrollIntoView({behavior:"smooth",block:"start"});
+  notify("Signal geladen. Änderungen vornehmen und speichern.");
 }
 
 async function deleteSignal(id){
@@ -1469,24 +1506,37 @@ async function deleteSignal(id){
 }
 
 function clearForm(){
-  ["editId","shortName","longName","meaning","imageUrl"].forEach(id=>{if($(id))$(id).value="";});tempImageBase64="";
+  ["editId","shortName","longName","meaning","imageUrl"].forEach(id=>{if($(id))$(id).value="";});
+  tempImageBase64="";
+  $("imageFile").value="";
+  $("cameraFile").value="";
+  $("formTitle").textContent="Signal hinzufügen";
+  $("saveSignal").textContent="Signal speichern";
+  $("clearForm").textContent="Formular leeren";
 }
 
 function renderList(){
   const container=$("signalList");
   if(!container)return;
-  container.innerHTML=signals.map(s=>`
+  $("signalCount").textContent=signals.length;
+  container.innerHTML=signals.length?signals.map(s=>`
     <div class="signal-card">
       <h3>${esc(s.short)} – ${esc(s.long)}</h3>
+      <span class="ticket-tag">${esc(CATEGORY_LABELS[s.category]||s.category||"Sonstige")}</span>
       <p>${esc(s.meaning)}</p>
-      <button type="button" class="primary btn-share" data-id="${esc(s.id)}">Teilen</button>
-      <button type="button" class="danger btn-delete-sig" data-id="${esc(s.id)}">Löschen</button>
-    </div>`).join("");
+      <div class="actions">
+        <button type="button" class="primary btn-edit-sig" data-id="${esc(s.id)}">✏️ Bearbeiten</button>
+        <button type="button" class="btn-share" data-id="${esc(s.id)}">Teilen</button>
+        <button type="button" class="danger btn-delete-sig" data-id="${esc(s.id)}">Löschen</button>
+      </div>
+    </div>`).join(""):'<p class="muted">Noch keine Signale gespeichert.</p>';
 }
 
 document.addEventListener("click", e=>{
+  const edit=e.target.closest(".btn-edit-sig");
   const del=e.target.closest(".btn-delete-sig");
   const share=e.target.closest(".btn-share");
+  if(edit)editSignal(edit.dataset.id);
   if(del)deleteSignal(del.dataset.id);
   if(share)shareSignalPrompt(share.dataset.id);
 });
@@ -1737,24 +1787,58 @@ function checkLearn(){
   $("nextLearn").hidden=false;
 }
 
-function repairImageInput(file){
+async function repairImageInput(file){
   if(!file)return;
   if(!file.type.startsWith("image/")){
-    notify("Bitte eine Bilddatei auswählen.");
+    notify("Bitte ein Foto auswählen.");
     return;
   }
-  if(file.size>2*1024*1024){
-    notify("Bild zu groß. Bitte ein Bild unter 2 MB wählen.");
+  // Schutz vor extrem großen Dateien; normale iPad-/Handyfotos sind erlaubt.
+  if(file.size>35*1024*1024){
+    notify("Foto ist außergewöhnlich groß (über 35 MB).");
     return;
   }
-
-  const reader=new FileReader();
-  reader.onload=()=>{
-    tempImageBase64=reader.result;
-    notify("Bild ausgewählt. Jetzt Signal speichern.");
-  };
-  reader.onerror=()=>notify("Bild konnte nicht gelesen werden.");
-  reader.readAsDataURL(file);
+  notify("Foto wird automatisch verkleinert …");
+  try{
+    const bitmapUrl=URL.createObjectURL(file);
+    const img=new Image();
+    try{
+      await new Promise((resolve,reject)=>{
+        img.onload=resolve;
+        img.onerror=()=>reject(new Error("Foto konnte nicht geöffnet werden."));
+        img.src=bitmapUrl;
+      });
+      const originalWidth=img.naturalWidth;
+      const originalHeight=img.naturalHeight;
+      if(!originalWidth||!originalHeight)throw new Error("Ungültige Bildgröße.");
+      let maxSide=900;
+      let quality=0.75;
+      let result="";
+      // Bilder werden als JPEG komprimiert, damit sie in den Signaldatensatz passen.
+      for(let attempt=0;attempt<7;attempt++){
+        const scale=Math.min(1,maxSide/Math.max(originalWidth,originalHeight));
+        const canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.round(originalWidth*scale));
+        canvas.height=Math.max(1,Math.round(originalHeight*scale));
+        const ctx=canvas.getContext("2d");
+        if(!ctx)throw new Error("Bildverarbeitung nicht verfügbar.");
+        ctx.fillStyle="#ffffff";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        result=canvas.toDataURL("image/jpeg",quality);
+        if(result.length<180000)break;
+        maxSide=Math.max(400,Math.round(maxSide*0.82));
+        quality=Math.max(0.45,quality-0.06);
+      }
+      if(result.length>=240000)throw new Error("Das Foto konnte nicht ausreichend verkleinert werden.");
+      tempImageBase64=result;
+      $("imageUrl").value="";
+      notify("Foto verkleinert und übernommen. Jetzt Signal speichern.");
+    }finally{URL.revokeObjectURL(bitmapUrl);}
+  }catch(err){
+    console.error("Bildverarbeitung:",err);
+    notify("Bildfehler: "+(err.message||err));
+  }
 }
 
 function installRepair(){
