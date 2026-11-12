@@ -1683,6 +1683,74 @@ function showPage(page){
   window.scrollTo(0,0);
 }
 
+
+/* DATENSICHERUNG: Export und Import ausschließlich im angemeldeten TEST-Konto. */
+function exportSignalData(){
+  if(!currentUser)return notify("Bitte zuerst anmelden.");
+  if(exportRunning)return;
+  exportRunning=true;
+  const button=$("exportData");
+  button.disabled=true;
+  try{
+    const data={format:"byarmando-signals",version:1,exported_at:new Date().toISOString(),signals:signals.map(s=>({
+      short:s.short||"",long:s.long||"",meaning:s.meaning||"",category:s.category||"Sonstige",image:s.image||""
+    }))};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;
+    link.download="ByArmando_Signale_Backup_"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    notify(data.signals.length+" Signale als Sicherungsdatei exportiert.");
+  }catch(err){console.error("Export:",err);notify("Export fehlgeschlagen: "+err.message);}
+  finally{exportRunning=false;button.disabled=false;}
+}
+
+let importRunning=false;
+async function importSignalData(file){
+  if(!file||!currentUser||importRunning)return;
+  const button=$("importButton");
+  importRunning=true;
+  button.disabled=true;
+  try{
+    if(file.size>50*1024*1024)throw new Error("Die Sicherungsdatei ist größer als 50 MB.");
+    const text=await file.text();
+    let parsed;
+    try{parsed=JSON.parse(text);}catch(_){throw new Error("Die Datei enthält kein gültiges JSON.");}
+    const rows=Array.isArray(parsed)?parsed:parsed?.signals;
+    if(!Array.isArray(rows))throw new Error("Keine Signalliste gefunden. Bitte eine ByArmando-JSON-Sicherung auswählen.");
+    if(rows.length>5000)throw new Error("Zu viele Signale in einer Datei (maximal 5000).");
+    const clean=rows.map((s,i)=>{
+      if(!s||typeof s!=="object")throw new Error("Ungültiges Signal an Position "+(i+1));
+      const short=String(s.short??s.short_name??"").trim();
+      const long=String(s.long??s.long_name??"").trim();
+      const meaning=String(s.meaning??"").trim();
+      const category=String(s.category||"Sonstige").trim();
+      const image=String(s.image??s.image_url??"").trim();
+      if(!short||!long||!meaning)throw new Error("Bei Signal "+(i+1)+" fehlen Kurzbezeichnung, Langbezeichnung oder Bedeutung.");
+      if(image.length>240000)throw new Error("Das Bild bei Signal "+(i+1)+" ist zu groß. Bitte das Bild vorher in der App verkleinern.");
+      return {short,long,meaning,category,image,user_id:currentUser.id};
+    });
+    if(!clean.length)return notify("Die Sicherungsdatei enthält keine Signale.");
+    if(!confirm(clean.length+" Signale importieren? Bestehende Signale bleiben erhalten. Doppelte Einträge können entstehen."))return;
+    let added=0;
+    for(const item of clean){
+      const {error}=await _supabase.from("signals").insert([item]);
+      if(error){
+        await loadCloudSignals();
+        throw new Error("Nach "+added+" von "+clean.length+" Signalen abgebrochen: "+error.message);
+      }
+      added++;
+    }
+    await loadCloudSignals();
+    notify(added+" Signale erfolgreich importiert!");
+  }catch(err){console.error("Import:",err);notify("Import fehlgeschlagen: "+err.message);}
+  finally{button.disabled=false;importRunning=false;$("importFile").value="";}
+}
+
 function initEvents(){
   $("showRegisterBtn").addEventListener("click",()=>switchAuthView("registerView"));
   $("showForgotBtn").addEventListener("click",()=>switchAuthView("forgotView"));
@@ -1748,6 +1816,9 @@ function initEvents(){
   $("clearSelection").addEventListener("click",()=>{selectedSignalIds.clear();renderList();});
   $("deleteSelected").addEventListener("click",deleteSelectedSignals);
   $("shareSelected").addEventListener("click",shareSelectedSignals);
+  $("exportData").addEventListener("click",exportSignalData);
+  $("importButton").addEventListener("click",()=>$("importFile").click());
+  $("importFile").addEventListener("change",e=>importSignalData(e.target.files?.[0]));
 
   // Der Aktualisieren-Button lädt jetzt die Nutzerstatistik
   $("refreshAdminStats").addEventListener("click",loadAdminStats);
