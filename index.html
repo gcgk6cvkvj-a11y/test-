@@ -365,7 +365,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
         <strong>Signalgruppen auswählen</strong>
         <button type="button" id="learnSelectAll" style="padding:7px 10px;font-size:12px;">Alle auswählen</button>
       </div>
-      <div id="learnCategoryChoices" class="category-grid"></div>
+      <div id="learnCategoryChoices" class="category-grid collapsed"></div>
       <div id="learnCategorySummary" class="category-summary"></div>
       <button type="button" class="category-toggle" id="learnToggleCategories">
         Signalgruppen auswählen ▼
@@ -420,7 +420,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
           <strong>Signalgruppen auswählen</strong>
           <button type="button" id="examSelectAll" style="padding:7px 10px;font-size:12px;">Alle auswählen</button>
         </div>
-        <div id="examCategoryChoices" class="category-grid"></div>
+        <div id="examCategoryChoices" class="category-grid collapsed"></div>
         <div id="examCategorySummary" class="category-summary"></div>
         <button type="button" class="category-toggle" id="examToggleCategories">
           Signalgruppen auswählen ▼
@@ -595,39 +595,9 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 <!-- TUTORIAL -->
 <section id="tutorial" class="page" hidden>
   <div class="panel">
-    <h2>📖 Vollständiges App-Tutorial</h2>
-    <p class="muted">Hier findest du Erklärungen zu allen Funktionen der Plattform:</p>
-
-    <div class="tutorial-step">
-      <h3>1. 📚 Lern- & Prüfungsmodus</h3>
-      <p>Trainiere deine Signale nach Gruppen. Das System erkennt Tippfehler automatisch und wertet falsche Bedeutungen in der Prüfung als Betriebsgefahr (0 Punkte). Falsche Antworten landen automatisch im Fehler-Training.</p>
-    </div>
-
-    <div class="tutorial-step">
-      <h3>2. 👥 Freunde per E-Mail</h3>
-      <p>Füge Kollegen über ihre E-Mail-Adresse hinzu. Aus Datenschutzgründen wird keine vollständige Liste registrierter Nutzer angezeigt.</p>
-    </div>
-
-    <div class="tutorial-step">
-      <h3>3. 👥 Lerngruppen (Mit Berechtigungen)</h3>
-      <p>Jeder User kann eine Lerngruppe gründen und Freunde einladen. Der Ersteller kann feine Berechtigungen verwalten: Wer darf in der Gruppe Signale hinzufügen, wer darf sie bearbeiten und wer darf sie löschen?</p>
-    </div>
-
-    <div class="tutorial-step">
-      <h3>4. 🎓 Kurse & Trainer-System</h3>
-      <p>Normale User können über das Menü den <b>Trainer-Status beantragen</b>. Nach Bestätigung durch den Admin kannst du als Trainer eigene Kurse eröffnen. Trainer können:</p>
-      <ul style="margin:6px 0;padding-left:20px;color:var(--text);font-size:14px;">
-        <li>Schüler per E-Mail in den Kurs einladen.</li>
-        <li>Lernmaterialien und Dokumente hochladen.</li>
-        <li><b>Hausaufgaben mit Abgabefrist</b> aufgeben (Schüler haben einen Abgabe-Button).</li>
-        <li>Bildschirm-Popups und Direktnachrichten direkt an Kursteilnehmer senden.</li>
-      </ul>
-    </div>
-
-    <div class="tutorial-step">
-      <h3>5. 📬 Postfach & Administrator-Funktionen</h3>
-      <p>Erhalte Antworten auf Support-Anfragen, Direktnachrichten von Trainern und verwalte Admin-Broadcasts, die als nicht zu übersehendes Pop-up auf dem Bildschirm angezeigt werden.</p>
-    </div>
+    <h2 id="tutorialTitle">📖 Dein Tutorial</h2>
+    <p class="muted" id="tutorialIntro">Anleitung für deine verfügbaren Funktionen.</p>
+    <div id="tutorialContent"></div>
   </div>
 </section>
 
@@ -816,6 +786,7 @@ let selectedExamCategories=new Set(BASE_CATEGORIES);
 let knownCategories=new Set(BASE_CATEGORIES);
 let learnCategoriesOpen=false;
 let examCategoriesOpen=false;
+let userRole="user";
 
 function saveLocalProgress(){
   localStorage.setItem("armando_signal_stats",JSON.stringify(stats));
@@ -1012,7 +983,8 @@ async function initUserSession(){
   if($("adminTrainerPanel"))$("adminTrainerPanel").hidden=!admin;
 
   await loadRegisteredUsersList();
-  checkTrainerStatus();
+  await checkTrainerStatus();
+  renderRoleTutorial();
 
   if(admin){
     loadAdminStats();
@@ -1034,6 +1006,8 @@ async function checkTrainerStatus(){
 
   try{
     const {data}=await _supabase.from("user_profiles").select("is_trainer, trainer_requested").eq("id",currentUser.id).maybeSingle();
+    userRole=admin?"admin":data?.is_trainer?"trainer":"user";
+    renderRoleTutorial();
     if(admin){
       container.innerHTML=`<span class="ticket-tag" style="background:var(--accent);color:#000;">Administrator</span>`;
       if(trainerBox)trainerBox.hidden=false;
@@ -1050,7 +1024,10 @@ async function checkTrainerStatus(){
       if(trainerBox)trainerBox.hidden=true;
       $("requestTrainerBtn")?.addEventListener("click", requestTrainerRole);
     }
-  }catch(err){}
+  }catch(err){
+    userRole=admin?"admin":"user";
+    renderRoleTutorial();
+  }
 }
 
 async function requestTrainerRole(){
@@ -1188,28 +1165,50 @@ document.addEventListener("click", async e=>{
 
 /* LERNGRUPPEN */
 async function createStudyGroup(){
+  if(!currentUser)return notify("Bitte zuerst anmelden.");
   const name=$("newGroupName").value.trim();
   if(!name)return notify("Bitte Gruppenname eingeben.");
+  const button=$("createGroupSubmit");
+  button.disabled=true;
+  let groupId=null;
   try{
-    const {data,error}=await _supabase.from("study_groups").insert([{name, creator_email:currentUser.email.toLowerCase()}]).select().single();
+    const {data,error}=await _supabase.from("study_groups")
+      .insert([{name,creator_email:currentUser.email.toLowerCase()}]).select("id").single();
     if(error)throw error;
-    await _supabase.from("study_group_members").insert([{group_id:data.id, user_email:currentUser.email.toLowerCase(), role:"owner", can_add:true, can_edit:true, can_delete:true}]);
+    if(!data?.id)throw new Error("Die Lerngruppe wurde nicht angelegt.");
+    groupId=data.id;
+    const memberResult=await _supabase.from("study_group_members").insert([{
+      group_id:groupId,user_email:currentUser.email.toLowerCase(),
+      role:"owner",can_add:true,can_edit:true,can_delete:true
+    }]);
+    if(memberResult.error)throw memberResult.error;
     $("newGroupName").value="";
     $("createGroupForm").hidden=true;
-    notify("Lerngruppe erstellt!");
-    loadStudyGroups();
-  }catch(err){notify("Fehler: "+err.message);}
+    await loadStudyGroups();
+    notify("Lerngruppe erfolgreich erstellt!");
+  }catch(err){
+    console.error("Lerngruppe erstellen:",err);
+    // Eine eventuell angelegte, aber unvollständige Gruppe aufräumen.
+    if(groupId){
+      const cleanup=await _supabase.from("study_groups").delete().eq("id",groupId);
+      if(cleanup.error)console.error("Gruppen-Aufräumen:",cleanup.error);
+    }
+    alert("Lerngruppe konnte nicht erstellt werden: "+(err.message||err)+
+      "\n\nFalls 'permission denied' oder 'row-level security' erscheint, müssen die Berechtigungen der TEST-Datenbank überprüft werden.");
+  }finally{button.disabled=false;}
 }
 
 async function loadStudyGroups(){
   const container=$("myStudyGroupsList");
   if(!container)return;
   try{
-    const {data: memberships}=await _supabase.from("study_group_members").select("group_id").eq("user_email",currentUser.email.toLowerCase());
+    const {data: memberships,error:memberError}=await _supabase.from("study_group_members").select("group_id").eq("user_email",currentUser.email.toLowerCase());
+    if(memberError)throw memberError;
     if(!memberships||!memberships.length){
     container.innerHTML="<p class='muted'>Du bist in keiner Lerngruppe.</p>";return;}
     const groupIds=memberships.map(m=>m.group_id);
-    const {data: groups}=await _supabase.from("study_groups").select("*").in("id",groupIds);
+    const {data: groups,error:groupsError}=await _supabase.from("study_groups").select("*").in("id",groupIds);
+    if(groupsError)throw groupsError;
     container.innerHTML=(groups||[]).map(g=>`
       <div class="signal-card">
         <h3>${esc(g.name)}</h3>
@@ -1664,6 +1663,38 @@ function setImage(img,placeholder,src){
   else{img.hidden=true; placeholder.hidden=false;}
 }
 
+/* Tutorials richten sich nach der bestätigten Rolle im TEST-Konto. */
+function renderRoleTutorial(){
+  const title=$("tutorialTitle"),intro=$("tutorialIntro"),content=$("tutorialContent");
+  if(!title||!intro||!content)return;
+  const role=userRole;
+  const step=(heading,description)=>`<div class="tutorial-step"><h3>${heading}</h3><p>${description}</p></div>`;
+  title.textContent=role==="admin"?"📖 Administrator-Tutorial":role==="trainer"?"📖 Trainer-Tutorial":"📖 Benutzer-Tutorial";
+  intro.textContent=role==="admin"?"Alle Benutzer-, Trainer- und Administratorfunktionen":role==="trainer"?"Deine Benutzer- und Trainerfunktionen":"Deine Funktionen als normaler Benutzer";
+  let html="";
+  html+=step("📚 Lernen","Unter Lernen kannst du die Signalgruppen über „Signalgruppen auswählen“ aufklappen und einzeln anhaken. Mit „Alle auswählen“ markierst du alle Gruppen. Beantworte Kurzbezeichnung, Langbezeichnung und Bedeutung und prüfe deine Antwort. Über „Nur falsch beantwortete Signale“ kannst du gezielt üben.");
+  html+=step("📝 Prüfung","Wähle im Prüfungsmodus zuerst deine Signalgruppen und die Anzahl der Fragen aus. Starte die Prüfung und beantworte die Aufgaben. Am Ende wird dein Ergebnis angezeigt.");
+  html+=step("📊 Statistik","Unter Statistik siehst du deine beantworteten Fragen, Punkte und Prüfungsergebnisse. Dort kannst du auch deine Lernstatistik zurücksetzen.");
+  html+=step("🚦 Eigene Signale verwalten","In Verwaltung kannst du Signale mit Kurzbezeichnung, Langbezeichnung, Bedeutung und Kategorie anlegen. Bilder lassen sich über Kamera oder Galerie hinzufügen. Vorhandene Signale kannst du bearbeiten, einzeln oder mehrfach auswählen, teilen und löschen.");
+  html+=step("💾 Datensicherung","Mit „Daten exportieren“ lädst du deine Signale als JSON-Sicherung herunter. Über „Daten importieren“ kannst du eine Sicherung wieder einlesen. Ein erneuter Import kann Duplikate erzeugen.");
+  html+=step("👥 Freunde und Lerngruppen","Im Seitenmenü kannst du Freunde per E-Mail einladen. Unter „Lerngruppen“ kannst du selbst eine neue Gruppe erstellen, Mitglieder einladen und – entsprechend den Gruppenrechten – Signale hinzufügen, bearbeiten oder löschen.");
+  html+=step("🎓 An Kursen teilnehmen","Im Menü „Kurse“ findest du Kurse, denen du zugeordnet bist. Dort kannst du Lernmaterialien und Aufgaben ansehen und Hausaufgaben abgeben, sofern diese angeboten werden.");
+  html+=step("📬 Nachrichten, geteilte Signale und Support","Im Postfach liest du Nachrichten. Unter „Geteilte Signale“ kannst du empfangene Signale übernehmen. Im Support-Bereich kannst du Fragen, Probleme und Vorschläge senden.");
+  html+=step("🎓 Trainer-Status beantragen","Im Seitenmenü kannst du den Trainer-Status beantragen. Erst nach Freischaltung stehen die zusätzlichen Trainerfunktionen zur Verfügung.");
+  if(role==="trainer"||role==="admin"){
+    html+=step("🎓 Eigene Kurse erstellen","Unter „Kurse“ kannst du einen neuen Kurs anlegen, öffnen und Schüler per E-Mail hinzufügen. Im Kurs verwaltest du die Teilnehmer und Schulungsinhalte.");
+    html+=step("📄 Lernmaterial und Hausaufgaben","In deinen Kursen kannst du Aufgaben und Dokumente hochladen sowie Hausaufgaben mit Abgabefrist erstellen. Schüler können ihre Abgaben über den Kurs einreichen.");
+    html+=step("📢 Trainer-Nachrichten","Im Kurs kannst du Nachrichten und Bildschirm-Popups an Kursteilnehmer senden. Die zugehörigen Nachrichten findest du in der Kursansicht.");
+  }
+  if(role==="admin"){
+    html+=step("🛡️ Trainer-Anträge","In Verwaltung siehst du Anträge auf Trainer-Freischaltung. Du kannst sie bestätigen oder ablehnen.");
+    html+=step("📈 Nutzerstatistik","Im Administrationsbereich der Verwaltung findest du die Zahlen zu aktiven und registrierten Nutzern und kannst sie aktualisieren.");
+    html+=step("📨 Support verwalten","Unter Verwaltung kannst du eingegangene Support-Anfragen ansehen und beantworten.");
+    html+=step("📢 Bildschirm-Nachrichten senden","Über die Administrator-Funktion kannst du eine Nachricht an alle registrierten Nutzer oder an ausgewählte E-Mail-Adressen senden.");
+  }
+  content.innerHTML=html;
+}
+
 /* NAVIGATION */
 function showPage(page){
   ["learn","exam","stats","manage","tutorial","support","inbox","shared","friends","studyGroups","groupDetail","courses","courseDetail"].forEach(id=>{
@@ -1904,6 +1935,13 @@ function repairCategories(){
     selectedLearnCategories.size+" Signalgruppen ausgewählt";
 
   $("learnAvailable").textContent=getLearnSignals().length;
+  renderExamCategories();
+}
+function renderExamCategories(){
+  const categories=[...new Set([...BASE_CATEGORIES,...signals.map(s=>s.category).filter(Boolean)])];
+  $("examCategoryChoices").innerHTML=categories.map(c=>`<label class="category-option"><input type="checkbox" value="${esc(c)}" ${selectedExamCategories.has(c)?"checked":""}><span>${esc(CATEGORY_LABELS[c]||c)}</span></label>`).join("");
+  $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
+  $("examAvailable").textContent=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige")).length+" Signale in der Auswahl";
 }
 
 function getLearnSignals(){
@@ -2075,9 +2113,29 @@ function installRepair(){
     nextLearn();
   });
 
-  $("learnToggleCategories").addEventListener("click",()=>{
-    const box=$("learnCategoryChoices");
-    box.classList.toggle("collapsed");
+  function setCategoryOpen(mode,open){
+    const box=$(mode+"CategoryChoices");
+    const button=$(mode+"ToggleCategories");
+    box.classList.toggle("collapsed",!open);
+    button.textContent=open?"Signalgruppen schließen ▲":"Signalgruppen auswählen ▼";
+    button.setAttribute("aria-expanded",String(open));
+    if(mode==="learn")learnCategoriesOpen=open;
+    else examCategoriesOpen=open;
+  }
+  setCategoryOpen("learn",false);
+  setCategoryOpen("exam",false);
+  $("learnToggleCategories").addEventListener("click",()=>setCategoryOpen("learn",!learnCategoriesOpen));
+  $("examToggleCategories").addEventListener("click",()=>setCategoryOpen("exam",!examCategoriesOpen));
+  $("examCategoryChoices").addEventListener("change",e=>{
+    if(e.target.type!=="checkbox")return;
+    if(e.target.checked)selectedExamCategories.add(e.target.value);
+    else selectedExamCategories.delete(e.target.value);
+    $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
+    $("examAvailable").textContent=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige")).length+" Signale in der Auswahl";
+  });
+  $("examSelectAll").addEventListener("click",()=>{
+    selectedExamCategories=new Set([...BASE_CATEGORIES,...signals.map(s=>s.category).filter(Boolean)]);
+    renderExamCategories();
   });
 
   $("onlyWrongFilter").addEventListener("change",nextLearn);
