@@ -278,7 +278,8 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <button type="button" id="closeSidebar" style="padding:6px 10px;">✕</button>
   </div>
   <button type="button" class="sidebar-link" data-page="tutorial">📖 Tutorial</button>
-  <button type="button" class="sidebar-link" data-page="friends">👥 Freunde</button>
+  <button type="button" class="sidebar-link" data-page="friends">👥 Freunde <span id="friendRequestBadge" class="pill-count" hidden>0</span></button>
+  <button type="button" class="sidebar-link" data-page="friendChat">💬 Freundesnachrichten <span id="friendChatBadge" class="pill-count" hidden>0</span></button>
   <button type="button" class="sidebar-link" data-page="studyGroups">👥 Lerngruppen</button>
   <button type="button" class="sidebar-link" data-page="courses">🎓 Kurse</button>
   <button type="button" class="sidebar-link" data-page="support">💬 Support</button>
@@ -439,6 +440,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     </div>
 
     <div id="examArea" hidden>
+      <button type="button" class="danger" id="cancelExam" style="width:100%;margin-bottom:12px">✕ Prüfung abbrechen</button>
       <hr>
       <div class="row">
         <strong id="examCounter">Frage 1</strong>
@@ -496,6 +498,22 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <hr>
     <h3>Anfragen & Freunde</h3>
     <div id="friendRequestsList"><p class="muted">Lade Freunde...</p></div>
+    <button type="button" id="refreshFriends" style="width:100%;margin-top:10px">↻ Freunde aktualisieren</button>
+  </div>
+</section>
+
+<!-- PRIVATER FREUNDESCHAT – getrennt von Support und Trainerpostfach -->
+<section id="friendChat" class="page" hidden>
+  <div class="panel">
+    <h2>💬 Freundesnachrichten</h2>
+    <p class="muted">Private Nachrichten nur zwischen bestätigten Freunden. Support- und Trainernachrichten bleiben im bisherigen Postfach.</p>
+    <label for="chatFriend">Mit welchem Freund schreiben?</label>
+    <select id="chatFriend"><option value="">Freund auswählen</option></select>
+    <div id="chatHistory" style="max-height:430px;overflow-y:auto;margin:12px 0;padding:8px;background:#111c29;border-radius:10px" aria-live="polite"><p class="muted">Bitte Freund auswählen.</p></div>
+    <label for="chatText">Deine Nachricht</label>
+    <textarea id="chatText" maxlength="4000" placeholder="Nachricht schreiben..."></textarea>
+    <button type="button" class="primary" id="sendChat" style="width:100%">Nachricht senden</button>
+    <button type="button" id="refreshChat" style="width:100%;margin-top:8px">↻ Nachrichten aktualisieren</button>
   </div>
 </section>
 
@@ -736,6 +754,16 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <input type="file" id="importFile" accept=".json,application/json" hidden>
   </div>
 </section>
+<!-- Dialog zum Teilen mit E-Mail-Vorschlägen bestätigter Freunde -->
+<dialog id="shareDialog" style="width:min(95vw,470px);background:#1b2735;color:#f3f6fa;border:1px solid #48a6ff;border-radius:14px;padding:18px">
+  <h3>📨 Signal(e) teilen</h3>
+  <p id="shareDialogInfo" class="muted"></p>
+  <label for="shareRecipient">E-Mail-Adresse des Empfängers</label>
+  <input id="shareRecipient" list="friendEmailSuggestions" type="email" placeholder="Zum Beispiel Andr..." autocomplete="off">
+  <datalist id="friendEmailSuggestions"></datalist>
+  <p class="muted">Vorschläge erscheinen beim Tippen für bestätigte Freunde.</p>
+  <div class="actions"><button type="button" id="cancelShareDialog">Abbrechen</button><button type="button" class="primary" id="confirmShareDialog">Teilen</button></div>
+</dialog>
 </main>
 
 <!-- DATALIST FÜR E-MAIL AUTO-VERVOLLSTÄNDIGUNG -->
@@ -774,6 +802,10 @@ let imageLoadToken=0;
 let selectedSignalIds=new Set();
 let bulkDeleteRunning=false;
 let exportRunning=false;
+let confirmedFriendEmails=[];
+let friendRefreshTimer=null;
+let chatTableAvailable=true;
+let sharePendingSignals=[];
 
 let activeGroupId=null;
 let activeCourseId=null;
@@ -792,6 +824,7 @@ function saveLocalProgress(){
   localStorage.setItem("armando_signal_stats",JSON.stringify(stats));
   localStorage.setItem("armando_wrong_signals",JSON.stringify([...wrongSignalIds]));
   if($("wrongCount"))$("wrongCount").textContent=wrongSignalIds.size;
+  renderLearningStats();
 }
 
 function notify(message){
@@ -799,6 +832,18 @@ function notify(message){
   if(!el)return;
   el.textContent=message;
   setTimeout(()=>{if(el.textContent===message)el.textContent="";},5000);
+}
+
+function renderLearningStats(){
+  const answered=Number(stats.answered)||0,points=Number(stats.points)||0;
+  if($("statAnswered"))$("statAnswered").textContent=answered;
+  if($("statPoints"))$("statPoints").textContent=points;
+  if($("statRate"))$("statRate").textContent=(answered?Math.round(points/answered*100):0)+" %";
+  if($("statExams"))$("statExams").textContent=Number(stats.exams)||0;
+  if($("lastExamResult")){
+    const r=stats.lastExam;
+    $("lastExamResult").textContent=r?`${r.correct} von ${r.total} richtig (${r.percentage} %) – ${new Date(r.date).toLocaleString("de-DE")}`:"Noch keine Prüfung absolviert.";
+  }
 }
 
 /* =====================================================
@@ -944,6 +989,8 @@ async function handleLogout(){
 
   await _supabase.auth.signOut();
   currentUser=null;
+  if(friendRefreshTimer){clearInterval(friendRefreshTimer);friendRefreshTimer=null;}
+  confirmedFriendEmails=[];
   signals=[];
   selectedSignalIds.clear();
   $("appMain").hidden=true;
@@ -993,6 +1040,15 @@ async function initUserSession(){
   }
 
   loadCloudSignals();
+  loadFriends();
+  refreshChatBadge();
+  if(friendRefreshTimer)clearInterval(friendRefreshTimer);
+  friendRefreshTimer=setInterval(()=>{
+    if(currentUser&&document.visibilityState==="visible"){
+      loadFriends();refreshChatBadge();
+      if(!$("friendChat").hidden&&$("chatFriend").value)loadFriendChat();
+    }
+  },30000);
   loadUserInbox();
   loadSharedSignals();
   checkForBroadcasts();
@@ -1136,32 +1192,100 @@ async function sendFriendRequest(){
 }
 
 async function loadFriends(){
+  if(!currentUser)return;
   const container=$("friendRequestsList");
-  if(!container)return;
   try{
-    const {data}=await _supabase.from("friendships").select("*").or(`sender_email.eq.${currentUser.email.toLowerCase()},recipient_email.eq.${currentUser.email.toLowerCase()}`);
-    if(!data||!data.length){
-      container.innerHTML="<p class='muted'>Noch keine Freunde oder Anfragen.</p>";
-      return;
-    }
-    container.innerHTML=data.map(f=>{
-      const isSender=f.sender_email===currentUser.email.toLowerCase();
-      if(f.status==="pending"&&!isSender){
-        return `<div class="signal-card"><p>Anfrage von <b>${esc(f.sender_email)}</b></p><button type="button" class="good btn-accept-friend" data-id="${esc(f.id)}">Annehmen</button></div>`;
-      }
-      return `<div class="signal-card"><p>${esc(isSender?f.recipient_email:f.sender_email)} (${f.status==="accepted"?"Verbunden":"Ausstehend"})</p></div>`;
-    }).join("");
-  }catch(err){container.innerHTML="<p class='muted'>Fehler beim Laden.</p>";}
+    const email=currentUser.email.toLowerCase();
+    const {data,error}=await _supabase.from("friendships").select("*")
+      .or(`sender_email.eq.${email},recipient_email.eq.${email}`);
+    if(error)throw error;
+    const rows=data||[];
+    confirmedFriendEmails=[...new Set(rows.filter(f=>f.status==="accepted")
+      .map(f=>f.sender_email.toLowerCase()===email?f.recipient_email:f.sender_email)
+      .map(v=>String(v).toLowerCase()))].sort();
+    const incoming=rows.filter(f=>f.status==="pending"&&f.recipient_email.toLowerCase()===email);
+    $("friendRequestBadge").hidden=!incoming.length;
+    $("friendRequestBadge").textContent=incoming.length;
+    container.innerHTML=rows.length?rows.map(f=>{
+      const isSender=f.sender_email.toLowerCase()===email;
+      if(f.status==="pending"&&!isSender)
+        return `<div class="signal-card"><p>Neue Anfrage von <b>${esc(f.sender_email)}</b></p><button type="button" class="good btn-accept-friend" data-id="${esc(f.id)}">Annehmen</button></div>`;
+      const other=isSender?f.recipient_email:f.sender_email;
+      return `<div class="signal-card"><p>${esc(other)} (${f.status==="accepted"?"Befreundet":"Ausstehend"})</p>${f.status==="accepted"?`<button type="button" class="btn-chat-friend" data-email="${esc(other)}">💬 Nachricht schreiben</button>`:""}</div>`;
+    }).join(""):'<p class="muted">Noch keine Freunde oder Anfragen.</p>';
+    const suggestions=$("friendEmailSuggestions");
+    suggestions.replaceChildren(...confirmedFriendEmails.map(mail=>{const opt=document.createElement("option");opt.value=mail;return opt;}));
+    const select=$("chatFriend"),previous=select.value;
+    select.innerHTML='<option value="">Freund auswählen</option>'+confirmedFriendEmails.map(mail=>`<option value="${esc(mail)}">${esc(mail)}</option>`).join("");
+    if(confirmedFriendEmails.includes(previous))select.value=previous;
+    updateFriendNotificationDot();
+  }catch(err){if(container)container.innerHTML='<p class="muted">Freunde konnten nicht geladen werden: '+esc(err.message)+'</p>';}
 }
 
-document.addEventListener("click", async e=>{
+function updateFriendNotificationDot(){
+  const visible=["friendRequestBadge","friendChatBadge","inboxUnreadBadge","sharedBadge"].some(id=>!$(id).hidden);
+  $("menuBadgeDot").hidden=!visible;
+}
+
+document.addEventListener("click",async e=>{
   const btn=e.target.closest(".btn-accept-friend");
   if(btn){
-    await _supabase.from("friendships").update({status:"accepted"}).eq("id",btn.dataset.id);
-    notify("Freundschaft angenommen!");
-    loadFriends();
+    const {error}=await _supabase.from("friendships").update({status:"accepted"}).eq("id",btn.dataset.id);
+    if(error)return notify("Annahme fehlgeschlagen: "+error.message);
+    notify("Freundschaft angenommen!");await loadFriends();
   }
+  const chat=e.target.closest(".btn-chat-friend");
+  if(chat){showPage("friendChat");$("chatFriend").value=chat.dataset.email;await loadFriendChat();}
 });
+
+async function refreshChatBadge(){
+  if(!currentUser||!chatTableAvailable)return;
+  const {count,error}=await _supabase.from("friend_messages")
+    .select("id",{count:"exact",head:true})
+    .eq("recipient_email",currentUser.email.toLowerCase()).is("read_at",null);
+  if(error){
+    if(error.code==="42P01"||error.code==="PGRST205")chatTableAvailable=false;
+    return;
+  }
+  $("friendChatBadge").hidden=!(count>0);
+  $("friendChatBadge").textContent=count||0;
+  updateFriendNotificationDot();
+}
+async function loadFriendChat(){
+  if(!currentUser)return;
+  const other=$("chatFriend").value;
+  const container=$("chatHistory");
+  if(!other){container.innerHTML='<p class="muted">Bitte einen Freund auswählen.</p>';return;}
+  if(!confirmedFriendEmails.includes(other))return notify("Bitte einen bestätigten Freund auswählen.");
+  const self=currentUser.email.toLowerCase();
+  const {data,error}=await _supabase.from("friend_messages").select("*")
+    .or(`and(sender_email.eq.${self},recipient_email.eq.${other}),and(sender_email.eq.${other},recipient_email.eq.${self})`)
+    .order("created_at",{ascending:true}).limit(200);
+  if(error){container.textContent="Nachrichten konnten nicht geladen werden: "+error.message+". Bitte zuerst das TEST-SQL installieren.";return;}
+  container.innerHTML=(data||[]).map(m=>{
+    const mine=m.sender_email.toLowerCase()===self;
+    return `<div class="signal-card" style="margin:6px 0;${mine?'border-color:#26795b;':''}"><small>${mine?'Du':esc(m.sender_email)} · ${new Date(m.created_at).toLocaleString('de-DE')}</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(m.message)}</p></div>`;
+  }).join("")||'<p class="muted">Noch keine Nachrichten. Schreib die erste!</p>';
+  container.scrollTop=container.scrollHeight;
+  const unread=(data||[]).filter(m=>m.recipient_email.toLowerCase()===self&&!m.read_at).map(m=>m.id);
+  if(unread.length){
+    const {error:readError}=await _supabase.from("friend_messages").update({read_at:new Date().toISOString()}).in("id",unread).eq("recipient_email",self);
+    if(readError)console.warn("Lesestatus:",readError);
+  }
+  await refreshChatBadge();
+}
+async function sendFriendChat(){
+  const other=$("chatFriend").value,text=$("chatText").value.trim();
+  if(!confirmedFriendEmails.includes(other))return notify("Bitte einen bestätigten Freund auswählen.");
+  if(!text)return notify("Bitte Nachricht eingeben.");
+  const button=$("sendChat");button.disabled=true;
+  try{
+    const {error}=await _supabase.from("friend_messages").insert({sender_email:currentUser.email.toLowerCase(),recipient_email:other,message:text});
+    if(error)throw error;
+    $("chatText").value="";await loadFriendChat();
+  }catch(err){notify("Nachricht konnte nicht gesendet werden: "+err.message);}
+  finally{button.disabled=false;}
+}
 
 /* LERNGRUPPEN */
 async function createStudyGroup(){
@@ -1407,9 +1531,11 @@ async function loadUserInbox(markAsRead=false){
     const unread=(data||[]).filter(m=>m.admin_reply&&!m.is_read).length;
     $("inboxUnreadBadge").hidden=(unread===0);
     $("inboxUnreadBadge").textContent=unread;
+    updateFriendNotificationDot();
     if(markAsRead&&unread>0){
       await _supabase.from("support_messages").update({is_read:true}).eq("user_id",currentUser.id).not("admin_reply","is",null);
       $("inboxUnreadBadge").hidden=true;
+      updateFriendNotificationDot();
     }
     container.innerHTML=(data||[]).map(m=>`<div class="signal-card"><span class="ticket-tag">${esc(m.category)}</span><p>${esc(m.message)}</p>${m.admin_reply?`<div class="admin-reply-box"><strong>Antwort:</strong> ${esc(m.admin_reply)}</div>`:""}</div>`).join("");
   }catch(err){}
@@ -1577,24 +1703,36 @@ async function deleteSelectedSignals(){
   finally{bulkDeleteRunning=false;updateBulkToolbar();}
 }
 
-async function shareSelectedSignals(){
-  if(!currentUser)return;
-  const chosen=signals.filter(s=>selectedSignalIds.has(String(s.id)));
-  if(!chosen.length)return;
-  const recipient=prompt("An welche E-Mail-Adresse sollen die "+chosen.length+" Signale geteilt werden?");
-  if(!recipient)return;
-  const email=recipient.trim().toLowerCase();
+function openShareDialog(chosen){
+  if(!currentUser||!chosen.length)return;
+  sharePendingSignals=chosen;
+  $("shareDialogInfo").textContent=chosen.length+" Signal(e) an einen Freund oder eine E-Mail-Adresse senden.";
+  $("shareRecipient").value="";
+  if(typeof $("shareDialog").showModal==="function")$("shareDialog").showModal();
+  else $("shareDialog").setAttribute("open","");
+  $("shareRecipient").focus();
+}
+function closeShareDialog(){
+  if($("shareDialog").open)$("shareDialog").close();
+  sharePendingSignals=[];
+}
+async function confirmShareDialog(){
+  const email=$("shareRecipient").value.trim().toLowerCase();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return notify("Bitte gültige E-Mail-Adresse eingeben.");
-  const button=$("shareSelected");button.disabled=true;
+  if(!sharePendingSignals.length)return;
+  const button=$("confirmShareDialog");button.disabled=true;
   try{
-    const payload=chosen.map(s=>({sender_email:currentUser.email,recipient_email:email,signal_data:s}));
+    const payload=sharePendingSignals.map(s=>({sender_email:currentUser.email,recipient_email:email,signal_data:s}));
     const {error}=await _supabase.from("shared_signals").insert(payload);
     if(error)throw error;
-    selectedSignalIds.clear();
-    renderList();
-    notify(chosen.length+" Signale geteilt!");
+    const sent=sharePendingSignals.length;
+    selectedSignalIds.clear();closeShareDialog();renderList();
+    notify(sent+" Signal(e) geteilt!");
   }catch(err){notify("Teilen fehlgeschlagen: "+err.message);}
-  finally{updateBulkToolbar();}
+  finally{button.disabled=false;}
+}
+function shareSelectedSignals(){
+  openShareDialog(signals.filter(s=>selectedSignalIds.has(String(s.id))));
 }
 
 document.addEventListener("click", e=>{
@@ -1606,18 +1744,16 @@ document.addEventListener("click", e=>{
   if(share)shareSignalPrompt(share.dataset.id);
 });
 
-async function shareSignalPrompt(signalId){
+function shareSignalPrompt(signalId){
   const signal=signals.find(s=>String(s.id)===String(signalId));
-  const recipient=prompt("E-Mail des Kollegen:");
-  if(!recipient)return;
-  await _supabase.from("shared_signals").insert([{sender_email:currentUser.email, recipient_email:recipient.trim().toLowerCase(), signal_data:signal}]);
-  notify("Signal geteilt!");
+  if(signal)openShareDialog([signal]);
 }
 
 async function loadSharedSignals(){
   try{
     const {data}=await _supabase.from("shared_signals").select("*").eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending");
     $("sharedBadge").hidden=!(data||[]).length;
+    updateFriendNotificationDot();
     $("sharedSignalsList").innerHTML=(data||[]).map(item=>`
       <div class="signal-card">
         <p>Von: ${esc(item.sender_email)}</p>
@@ -1673,11 +1809,13 @@ function renderRoleTutorial(){
   intro.textContent=role==="admin"?"Alle Benutzer-, Trainer- und Administratorfunktionen":role==="trainer"?"Deine Benutzer- und Trainerfunktionen":"Deine Funktionen als normaler Benutzer";
   let html="";
   html+=step("📚 Lernen","Unter Lernen kannst du die Signalgruppen über „Signalgruppen auswählen“ aufklappen und einzeln anhaken. Mit „Alle auswählen“ markierst du alle Gruppen. Beantworte Kurzbezeichnung, Langbezeichnung und Bedeutung und prüfe deine Antwort. Über „Nur falsch beantwortete Signale“ kannst du gezielt üben.");
-  html+=step("📝 Prüfung","Wähle im Prüfungsmodus zuerst deine Signalgruppen und die Anzahl der Fragen aus. Starte die Prüfung und beantworte die Aufgaben. Am Ende wird dein Ergebnis angezeigt.");
+  html+=step("📝 Prüfung","Wähle Signalgruppen und die Anzahl der Fragen aus. Starte die Prüfung und beantworte die Aufgaben. Über Prüfung abbrechen kannst du die laufende Prüfung mit Bestätigung beenden, ohne sie als abgeschlossene Prüfung zu zählen.");
   html+=step("📊 Statistik","Unter Statistik siehst du deine beantworteten Fragen, Punkte und Prüfungsergebnisse. Dort kannst du auch deine Lernstatistik zurücksetzen.");
   html+=step("🚦 Eigene Signale verwalten","In Verwaltung kannst du Signale mit Kurzbezeichnung, Langbezeichnung, Bedeutung und Kategorie anlegen. Bilder lassen sich über Kamera oder Galerie hinzufügen. Vorhandene Signale kannst du bearbeiten, einzeln oder mehrfach auswählen, teilen und löschen.");
   html+=step("💾 Datensicherung","Mit „Daten exportieren“ lädst du deine Signale als JSON-Sicherung herunter. Über „Daten importieren“ kannst du eine Sicherung wieder einlesen. Ein erneuter Import kann Duplikate erzeugen.");
-  html+=step("👥 Freunde und Lerngruppen","Im Seitenmenü kannst du Freunde per E-Mail einladen. Unter „Lerngruppen“ kannst du selbst eine neue Gruppe erstellen, Mitglieder einladen und – entsprechend den Gruppenrechten – Signale hinzufügen, bearbeiten oder löschen.");
+  html+=step("👥 Freunde und Lerngruppen","Im Seitenmenü kannst du Freunde per E-Mail einladen und Anfragen annehmen. Neue Anfragen erscheinen mit einer Zahl bei Freunde. Unter Lerngruppen kannst du selbst Gruppen erstellen und Mitglieder einladen.");
+  html+=step("💬 Freundesnachrichten","Unter Freundesnachrichten schreibst du privat mit bestätigten Freunden. Neue Nachrichten erscheinen mit einer Zahl. Das Support- und Trainerpostfach bleibt getrennt.");
+  html+=step("📨 Signale teilen","Beim Teilen eines Signals kannst du die E-Mail-Adresse eingeben. Bereits beim Tippen erscheinen Vorschläge aus deinen bestätigten Freunden.");
   html+=step("🎓 An Kursen teilnehmen","Im Menü „Kurse“ findest du Kurse, denen du zugeordnet bist. Dort kannst du Lernmaterialien und Aufgaben ansehen und Hausaufgaben abgeben, sofern diese angeboten werden.");
   html+=step("📬 Nachrichten, geteilte Signale und Support","Im Postfach liest du Nachrichten. Unter „Geteilte Signale“ kannst du empfangene Signale übernehmen. Im Support-Bereich kannst du Fragen, Probleme und Vorschläge senden.");
   html+=step("🎓 Trainer-Status beantragen","Im Seitenmenü kannst du den Trainer-Status beantragen. Erst nach Freischaltung stehen die zusätzlichen Trainerfunktionen zur Verfügung.");
@@ -1697,7 +1835,7 @@ function renderRoleTutorial(){
 
 /* NAVIGATION */
 function showPage(page){
-  ["learn","exam","stats","manage","tutorial","support","inbox","shared","friends","studyGroups","groupDetail","courses","courseDetail"].forEach(id=>{
+  ["learn","exam","stats","manage","tutorial","support","inbox","shared","friends","friendChat","studyGroups","groupDetail","courses","courseDetail"].forEach(id=>{
     const v=(id===page);
     const el=$(id);
     if(el){el.hidden=!v; el.style.display=v?"block":"none";}
@@ -1706,11 +1844,13 @@ function showPage(page){
     btn.classList.toggle("active",btn.dataset.page===page);
   });
   if(page==="friends")loadFriends();
+  if(page==="friendChat"){loadFriends().then(loadFriendChat);}
   if(page==="studyGroups")loadStudyGroups();
   if(page==="courses")loadCourses();
 
   if(page==="inbox")loadUserInbox(true);
   if(page==="shared")loadSharedSignals();
+  if(page==="stats")renderLearningStats();
   window.scrollTo(0,0);
 }
 
@@ -1846,6 +1986,18 @@ function initEvents(){
 
   $("closePopupBtn").addEventListener("click",markBroadcastAsRead);
   $("sendFriendRequestBtn").addEventListener("click",sendFriendRequest);
+  $("refreshFriends").addEventListener("click",loadFriends);
+  $("chatFriend").addEventListener("change",loadFriendChat);
+  $("sendChat").addEventListener("click",sendFriendChat);
+  $("refreshChat").addEventListener("click",loadFriendChat);
+  $("cancelShareDialog").addEventListener("click",closeShareDialog);
+  $("confirmShareDialog").addEventListener("click",confirmShareDialog);
+  $("shareDialog").addEventListener("close",()=>{sharePendingSignals=[];});
+  $("resetStats").addEventListener("click",()=>{
+    if(!confirm("Statistik und Fehlerliste wirklich zurücksetzen?"))return;
+    stats={answered:0,points:0,exams:0,lastExam:null};wrongSignalIds.clear();
+    saveLocalProgress();notify("Statistik zurückgesetzt.");
+  });
   $("showCreateGroupBtn").addEventListener("click",()=>{$("createGroupForm").hidden=false;});
   $("cancelCreateGroup").addEventListener("click",()=>{$("createGroupForm").hidden=true;});
   $("createGroupSubmit").addEventListener("click",createStudyGroup);
@@ -2210,9 +2362,17 @@ function finishExamSession(){
 function init(){
   initEvents();
   $("startExam").addEventListener("click",startExamSession);
+  $("cancelExam").addEventListener("click",()=>{
+    if(!examQuestions.length)return;
+    if(!confirm("Prüfung wirklich abbrechen? Sie zählt nicht als abgeschlossene Prüfung."))return;
+    examStopClock();examQuestions=[];examAnswered=false;
+    $("examArea").hidden=true;$("examConfig").hidden=false;$("examResult").hidden=true;
+    notify("Prüfung abgebrochen.");
+  });
   $("submitExam").addEventListener("click",submitExamAnswer);
   $("examNext").addEventListener("click",()=>{examIndex++;renderExamQuestion();});
   installRepair();
+  renderLearningStats();
   checkSession();
 }
 
