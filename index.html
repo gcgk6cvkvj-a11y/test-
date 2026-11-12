@@ -974,6 +974,7 @@ async function handleLogout(){
   await _supabase.auth.signOut();
   currentUser=null;
   signals=[];
+  selectedSignalIds.clear();
   $("appMain").hidden=true;
   $("mainNav").hidden=true;
   $("menuBtn").hidden=true;
@@ -1515,12 +1516,37 @@ function clearForm(){
   $("clearForm").textContent="Formular leeren";
 }
 
+function visibleSignals(){
+  const term=$("searchSignals").value.trim().toLocaleLowerCase("de-DE");
+  return signals.filter(s=>[s.short,s.long,s.meaning,s.category]
+    .some(v=>String(v||"").toLocaleLowerCase("de-DE").includes(term)));
+}
+
+function updateBulkToolbar(){
+  const visible=visibleSignals();
+  const selected=visible.filter(s=>selectedSignalIds.has(String(s.id)));
+  const all=$("selectAllSignals");
+  all.checked=visible.length>0&&selected.length===visible.length;
+  all.indeterminate=selected.length>0&&selected.length<visible.length;
+  $("selectionCount").textContent=selectedSignalIds.size+" ausgewählt";
+  $("shareSelected").disabled=selectedSignalIds.size===0||bulkDeleteRunning;
+  $("deleteSelected").disabled=selectedSignalIds.size===0||bulkDeleteRunning;
+  $("clearSelection").disabled=selectedSignalIds.size===0||bulkDeleteRunning;
+}
+
 function renderList(){
   const container=$("signalList");
   if(!container)return;
+  const valid=new Set(signals.map(s=>String(s.id)));
+  selectedSignalIds=new Set([...selectedSignalIds].filter(id=>valid.has(id)));
   $("signalCount").textContent=signals.length;
-  container.innerHTML=signals.length?signals.map(s=>`
-    <div class="signal-card">
+  const visible=visibleSignals();
+  container.innerHTML=visible.length?visible.map(s=>`
+    <div class="signal-card ${selectedSignalIds.has(String(s.id))?"selected":""}">
+      <label class="signal-select-row" style="cursor:pointer;">
+        <input type="checkbox" class="select-one-signal" data-id="${esc(s.id)}" ${selectedSignalIds.has(String(s.id))?"checked":""}>
+        <span>Dieses Signal auswählen</span>
+      </label>
       <h3>${esc(s.short)} – ${esc(s.long)}</h3>
       <span class="ticket-tag">${esc(CATEGORY_LABELS[s.category]||s.category||"Sonstige")}</span>
       <p>${esc(s.meaning)}</p>
@@ -1529,7 +1555,47 @@ function renderList(){
         <button type="button" class="btn-share" data-id="${esc(s.id)}">Teilen</button>
         <button type="button" class="danger btn-delete-sig" data-id="${esc(s.id)}">Löschen</button>
       </div>
-    </div>`).join(""):'<p class="muted">Noch keine Signale gespeichert.</p>';
+    </div>`).join(""):'<p class="muted">'+(signals.length?'Keine passenden Signale gefunden.':'Noch keine Signale gespeichert.')+'</p>';
+  updateBulkToolbar();
+}
+
+async function deleteSelectedSignals(){
+  if(!currentUser||bulkDeleteRunning)return;
+  const ids=[...selectedSignalIds];
+  if(!ids.length)return;
+  if(!confirm(ids.length+" ausgewählte Signale wirklich löschen?"))return;
+  bulkDeleteRunning=true;
+  updateBulkToolbar();
+  try{
+    const {data,error}=await _supabase.from("signals").delete()
+      .eq("user_id",currentUser.id).in("id",ids).select("id");
+    if(error)throw error;
+    const deleted=new Set((data||[]).map(s=>String(s.id)));
+    deleted.forEach(id=>selectedSignalIds.delete(id));
+    await loadCloudSignals();
+    notify(deleted.size+" Signale gelöscht."+(deleted.size<ids.length?" Einige konnten nicht gelöscht werden.":""));
+  }catch(err){notify("Löschen fehlgeschlagen: "+err.message);}
+  finally{bulkDeleteRunning=false;updateBulkToolbar();}
+}
+
+async function shareSelectedSignals(){
+  if(!currentUser)return;
+  const chosen=signals.filter(s=>selectedSignalIds.has(String(s.id)));
+  if(!chosen.length)return;
+  const recipient=prompt("An welche E-Mail-Adresse sollen die "+chosen.length+" Signale geteilt werden?");
+  if(!recipient)return;
+  const email=recipient.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return notify("Bitte gültige E-Mail-Adresse eingeben.");
+  const button=$("shareSelected");button.disabled=true;
+  try{
+    const payload=chosen.map(s=>({sender_email:currentUser.email,recipient_email:email,signal_data:s}));
+    const {error}=await _supabase.from("shared_signals").insert(payload);
+    if(error)throw error;
+    selectedSignalIds.clear();
+    renderList();
+    notify(chosen.length+" Signale geteilt!");
+  }catch(err){notify("Teilen fehlgeschlagen: "+err.message);}
+  finally{updateBulkToolbar();}
 }
 
 document.addEventListener("click", e=>{
@@ -1664,6 +1730,24 @@ function initEvents(){
   $("saveSignal").addEventListener("click",saveSignal);
   $("clearForm").addEventListener("click",clearForm);
   $("searchSignals").addEventListener("input",renderList);
+  $("signalList").addEventListener("change",e=>{
+    const cb=e.target.closest(".select-one-signal");
+    if(!cb)return;
+    if(cb.checked)selectedSignalIds.add(String(cb.dataset.id));
+    else selectedSignalIds.delete(String(cb.dataset.id));
+    cb.closest(".signal-card").classList.toggle("selected",cb.checked);
+    updateBulkToolbar();
+  });
+  $("selectAllSignals").addEventListener("change",e=>{
+    visibleSignals().forEach(s=>{
+      if(e.target.checked)selectedSignalIds.add(String(s.id));
+      else selectedSignalIds.delete(String(s.id));
+    });
+    renderList();
+  });
+  $("clearSelection").addEventListener("click",()=>{selectedSignalIds.clear();renderList();});
+  $("deleteSelected").addEventListener("click",deleteSelectedSignals);
+  $("shareSelected").addEventListener("click",shareSelectedSignals);
 
   // Der Aktualisieren-Button lädt jetzt die Nutzerstatistik
   $("refreshAdminStats").addEventListener("click",loadAdminStats);
