@@ -1,0 +1,1643 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#101722">
+<title>Signale lernen ByArmando</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root {
+  --bg:#101722;--panel:#1b2735;--panel2:#243448;
+  --text:#f3f6fa;--muted:#aab8c8;--accent:#48a6ff;
+  --green:#38c98b;--red:#ff6474;--orange:#ffad42;
+  --border:#34465b;
+}
+* {box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body {
+  margin:0;padding:12px 12px 90px;background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+header,main {max-width:900px;margin:auto}
+header {
+  padding:8px 3px 14px;display:flex;
+  justify-content:space-between;align-items:center;gap:10px;
+}
+.header-left {display:flex;align-items:center;gap:12px}
+h1 {font-size:22px;margin:4px 0;display:flex;align-items:center;gap:8px}
+h2 {font-size:20px;margin:0 0 12px}
+h3 {font-size:16px;margin:10px 0}
+p {line-height:1.5;margin:8px 0}
+small,.muted {color:var(--muted)}
+.brand {color:var(--accent)}
+
+#menuBtn {
+  background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);font-size:20px;padding:8px 12px;
+  border-radius:10px;position:relative;
+}
+.badge-dot {
+  position:absolute;top:-4px;right:-4px;width:12px;height:12px;
+  background:var(--red);border-radius:50%;border:2px solid var(--bg);
+}
+#sidebarBackdrop, #popupBackdrop {
+  position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:1999;backdrop-filter:blur(3px);
+}
+#sidebar {
+  position:fixed;top:0;left:0;bottom:0;width:280px;max-width:82vw;
+  background:#0d131d;border-right:1px solid var(--border);
+  z-index:2000;padding:18px;display:flex;flex-direction:column;
+  gap:10px;transform:translateX(-105%);transition:transform .25s ease;
+  box-shadow:6px 0 24px rgba(0,0,0,.6);
+  overflow-y:auto;
+}
+#sidebar.open {transform:translateX(0)}
+.sidebar-header {
+  display:flex;justify-content:space-between;align-items:center;
+  padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:6px;
+}
+.sidebar-link {
+  width:100%;justify-content:flex-start;background:var(--panel);
+  padding:13px 14px;font-size:15px;position:relative;
+}
+.sidebar-link.active {border-color:var(--accent);color:var(--accent)}
+.pill-count {
+  margin-left:auto;background:var(--red);color:#fff;
+  font-size:11px;padding:2px 7px;border-radius:99px;font-weight:700;
+}
+
+#broadcastPopup {
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:90%;max-width:450px;background:#1b2735;border:1px solid var(--accent);
+  border-radius:16px;padding:22px;z-index:3000;box-shadow:0 10px 30px rgba(0,0,0,.7);
+}
+#broadcastPopup h2 {color:var(--accent);margin-top:0;}
+
+nav#mainNav {
+  position:fixed;bottom:0;left:0;right:0;background:#0d131d;
+  border-top:1px solid var(--border);display:grid;
+  grid-template-columns:repeat(4,1fr);
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
+  z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,.5);
+}
+nav#mainNav button {
+  background:transparent;border:none;border-radius:8px;
+  color:var(--muted);font-size:11px;font-weight:600;
+  padding:6px 2px;display:flex;flex-direction:column;
+  align-items:center;gap:4px;
+}
+nav#mainNav button .icon {font-size:18px}
+nav#mainNav button.active {color:var(--accent);background:rgba(72,166,255,.1)}
+
+button,input,select,textarea {font:inherit;border-radius:10px;border:1px solid var(--border)}
+button {
+  background:var(--panel2);color:var(--text);padding:12px 14px;
+  cursor:pointer;font-weight:600;display:inline-flex;
+  align-items:center;justify-content:center;gap:6px;
+}
+button:active {transform:scale(.98)}
+button.primary {background:var(--accent);color:#071522;border-color:var(--accent)}
+button.good {background:#176e50;color:#fff;border-color:#26795b}
+button.danger {background:#853542;color:#fff;border-color:#a84353}
+button.link-btn {
+  background:transparent;border:none;color:var(--accent);
+  padding:6px;font-size:13px;text-decoration:underline;width:100%;margin-top:8px;
+}
+button:disabled {opacity:.45;cursor:not-allowed}
+input,select,textarea {
+  width:100%;padding:12px;margin:6px 0 14px;
+  background:#111c29;color:var(--text);outline:none;
+}
+input:focus,select:focus,textarea:focus {border-color:var(--accent)}
+textarea {min-height:95px;resize:vertical}
+label {display:block;color:var(--muted);font-size:13px;font-weight:500}
+.panel {
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:16px;padding:16px;margin-bottom:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+.page {display:block}
+.page[hidden] {display:none!important}
+.row {display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>* {flex:1;min-width:130px}
+.actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.actions button {flex:1;min-width:110px}
+.signal-image {
+  width:100%;height:240px;object-fit:contain;background:#fff;
+  border-radius:12px;margin:10px 0;border:1px solid var(--border);
+}
+.placeholder {
+  height:180px;background:#111c29;border:1px dashed var(--border);
+  border-radius:12px;display:flex;align-items:center;
+  justify-content:center;color:var(--muted);text-align:center;
+  padding:20px;margin:10px 0;
+}
+.placeholder[hidden], .signal-image[hidden] {display:none!important}
+.answer {
+  background:#111c29;border-radius:12px;padding:14px;
+  margin-top:14px;border:1px solid var(--border);
+}
+.correct {color:var(--green)}
+.incorrect {color:var(--red)}
+.warning {
+  background:#3d1c18;border:1px solid #b65b36;
+  border-radius:10px;padding:12px;margin-top:12px;color:#ffd4b8;
+}
+.warning h3 {color:#ff8b68;margin-top:0}
+.solution {
+  background:#103328;border:1px solid #26795b;
+  border-radius:10px;padding:14px;margin-top:12px;
+}
+.solution h3 {color:#d9fff0;margin-top:0}
+.solution p {margin:8px 0}
+.progress {
+  height:8px;background:#101722;border-radius:10px;
+  overflow:hidden;margin:10px 0;
+}
+.progress span {
+  display:block;height:100%;background:var(--green);
+  width:0%;transition:width .3s ease;
+}
+.stat-grid {display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat {
+  background:#111c29;border-radius:12px;padding:14px;
+  border:1px solid var(--border);
+}
+.stat strong {display:block;font-size:24px;margin-top:6px;color:var(--accent)}
+.signal-card {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:12px;padding:14px;margin:10px 0;
+}
+.signal-card h3 {margin:0 0 6px;color:#fff;font-size:17px}
+.signal-card p {margin:8px 0;color:#d0dbe7;font-size:14px}
+.ticket-tag {
+  display:inline-block;padding:3px 8px;border-radius:6px;
+  font-size:11px;font-weight:700;background:var(--panel2);color:var(--accent);
+}
+.admin-reply-box {
+  background:#103328;border-left:3px solid var(--green);
+  padding:10px 12px;border-radius:8px;margin-top:10px;font-size:14px;
+}
+.tutorial-step {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:12px;padding:14px;margin-bottom:10px;
+}
+.tutorial-step h3 {margin:0 0 6px;color:var(--accent)}
+.signal-select-row {
+  display:flex;align-items:center;gap:10px;margin-bottom:12px;
+  padding-bottom:10px;border-bottom:1px solid var(--border);
+}
+.signal-select-row label {
+  color:var(--text);font-size:14px;display:flex;
+  align-items:center;gap:9px;cursor:pointer;flex:1;
+}
+.signal-select-row input[type="checkbox"],
+.signal-card input[type="checkbox"],
+.filter-box input[type="checkbox"] {
+  width:20px;height:20px;margin:0;accent-color:var(--accent);flex-shrink:0;
+}
+.filter-box {
+  display:flex;align-items:center;gap:10px;background:#111c29;
+  border:1px solid var(--border);padding:10px 12px;border-radius:10px;margin-bottom:12px;
+}
+.signal-card.selected {border-color:var(--accent);background:#14283b}
+.bulk-toolbar {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:12px;padding:12px;margin:10px 0 14px;
+}
+.bulk-toolbar .actions {margin-top:8px}
+.bulk-toolbar button {font-size:13px;padding:11px 8px}
+.selection-count {color:var(--accent);font-weight:700;font-size:14px;margin-top:8px}
+.category-picker {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:12px;padding:12px;margin:10px 0 14px;
+}
+.category-picker-header {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:10px;flex-wrap:wrap;
+}
+.category-picker-header strong {font-size:14px}
+.category-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+.category-grid.collapsed {display:none}
+.category-option {
+  display:flex;align-items:center;gap:8px;
+  padding:9px;background:#1b2735;border:1px solid var(--border);
+  border-radius:9px;color:var(--text);font-size:13px;min-width:0;
+}
+.category-option input {
+  width:19px;height:19px;margin:0;flex-shrink:0;
+  accent-color:var(--accent);
+}
+.category-option span {overflow-wrap:anywhere}
+.category-summary {
+  color:var(--accent);font-size:13px;font-weight:700;margin-top:10px;
+}
+
+.category-toggle {
+  width:100%;margin-top:10px;padding:10px;font-size:13px;
+  background:#243448;border:1px solid var(--border);
+}
+hr {border:0;border-top:1px solid var(--border);margin:16px 0}
+#notice {
+  min-height:20px;color:var(--green);font-weight:600;
+  font-size:14px;margin-top:4px;
+}
+#authPanel {max-width:420px;margin:30px auto}
+@media(max-width:520px) {
+  body {padding:8px 8px 85px}
+  .panel {padding:12px}
+  h1 {font-size:19px}
+  .signal-image {height:200px}
+  .stat-grid {grid-template-columns:1fr}
+  .category-grid {grid-template-columns:1fr 1fr}
+  .category-picker-header button {font-size:11px!important}
+}
+</style>
+</head>
+
+<body>
+
+<div id="popupBackdrop" hidden></div>
+<div id="broadcastPopup" hidden>
+  <h2 id="popupTitle">Wichtige Information</h2>
+  <p id="popupMessage" style="white-space:pre-wrap;margin-bottom:20px;"></p>
+  <button type="button" class="primary" id="closePopupBtn" style="width:100%;">Verstanden</button>
+</div>
+
+<!-- SEITENLEISTE -->
+<div id="sidebarBackdrop" hidden></div>
+<aside id="sidebar" aria-label="Seitenmenü">
+  <div class="sidebar-header">
+    <strong>Menü</strong>
+    <button type="button" id="closeSidebar" style="padding:6px 10px;">✕</button>
+  </div>
+  <button type="button" class="sidebar-link" data-page="tutorial">📖 Tutorial</button>
+  <button type="button" class="sidebar-link" data-page="friends">👥 Freunde</button>
+  <button type="button" class="sidebar-link" data-page="studyGroups">👥 Lerngruppen</button>
+  <button type="button" class="sidebar-link" data-page="courses">🎓 Kurse</button>
+  <button type="button" class="sidebar-link" data-page="support">💬 Support</button>
+  <button type="button" class="sidebar-link" data-page="inbox">
+    📬 Postfach <span id="inboxUnreadBadge" class="pill-count" hidden>0</span>
+  </button>
+  <button type="button" class="sidebar-link" data-page="shared">
+    📨 Geteilte Signale <span id="sharedBadge" class="pill-count" hidden>0</span>
+  </button>
+  <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);">
+    <small id="sidebarUserEmail" class="muted" style="display:block;margin-bottom:8px;word-break:break-all;"></small>
+    <div id="trainerStatusContainer" style="margin-top:8px;"></div>
+  </div>
+</aside>
+
+<header>
+  <div class="header-left">
+    <button type="button" id="menuBtn" hidden aria-label="Menü öffnen">
+      ☰ <span id="menuBadgeDot" class="badge-dot" hidden></span>
+    </button>
+    <div>
+      <h1>🚦 Signale lernen <span class="brand">ByArmando</span></h1>
+      <p class="muted" style="margin:0;font-size:13px;">Signale erkennen · Bedeutungen lernen · Prüfung bestehen</p>
+    </div>
+  </div>
+  <button id="logoutBtn" class="danger" style="display:none;padding:6px 12px;font-size:12px;">Abmelden</button>
+</header>
+
+<div id="notice" aria-live="polite" style="max-width:900px;margin:auto;"></div>
+
+<!-- AUTHENTIFIZIERUNG -->
+<section id="authPanel" class="panel">
+  <div id="loginView">
+    <h2>Anmelden</h2>
+    <label for="loginEmail">E-Mail Adresse</label>
+    <input type="email" id="loginEmail" placeholder="deine@email.de" autocomplete="email">
+    <label for="loginPassword">Passwort</label>
+    <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    <button type="button" class="primary" id="loginBtn" style="width:100%;">Einloggen</button>
+    <button type="button" class="link-btn" id="showForgotBtn">Passwort vergessen?</button>
+    <hr>
+    <p class="muted" style="text-align:center;font-size:13px;">Noch keinen Zugang?</p>
+    <button type="button" id="showRegisterBtn" style="width:100%;">Registrieren</button>
+  </div>
+
+  <div id="registerView" hidden>
+    <h2>Konto registrieren</h2>
+    <label for="regEmail">E-Mail Adresse</label>
+    <input type="email" id="regEmail" placeholder="deine@email.de" autocomplete="email">
+    <label for="regPassword">Passwort (mind. 6 Zeichen)</label>
+    <input type="password" id="regPassword" placeholder="••••••••" autocomplete="new-password">
+    <label for="regPasswordConfirm">Passwort bestätigen</label>
+    <input type="password" id="regPasswordConfirm" placeholder="••••••••" autocomplete="new-password">
+    <button type="button" class="primary" id="registerBtn" style="width:100%;">Konto erstellen</button>
+    <button type="button" class="link-btn" id="backToLoginFromReg">← Zurück zum Login</button>
+  </div>
+
+  <div id="forgotView" hidden>
+    <h2>Passwort zurücksetzen</h2>
+    <label for="forgotEmail">E-Mail Adresse</label>
+    <input type="email" id="forgotEmail" placeholder="deine@email.de" autocomplete="email">
+    <button type="button" class="primary" id="sendResetBtn" style="width:100%;">Link anfordern</button>
+    <button type="button" class="link-btn" id="backToLoginFromForgot">← Zurück zum Login</button>
+  </div>
+
+  <div id="newPasswordView" hidden>
+    <h2>Neues Passwort festlegen</h2>
+    <label for="newPasswordInput">Neues Passwort (mind. 6 Zeichen)</label>
+    <input type="password" id="newPasswordInput" placeholder="••••••••" autocomplete="new-password">
+    <button type="button" class="primary" id="saveNewPasswordBtn" style="width:100%;">Passwort speichern</button>
+  </div>
+</section>
+
+<main id="appMain" hidden>
+
+<!-- LERNMODUS -->
+<section id="learn" class="page">
+  <div class="panel">
+    <h2>Lernmodus</h2>
+    <p class="muted">Wähle aus, welche Signalgruppen du lernen möchtest.</p>
+
+    <div class="category-picker">
+      <div class="category-picker-header">
+        <strong>Signalgruppen auswählen</strong>
+        <button type="button" id="learnSelectAll" style="padding:7px 10px;font-size:12px;">Alle auswählen</button>
+      </div>
+      <div id="learnCategoryChoices" class="category-grid"></div>
+      <div id="learnCategorySummary" class="category-summary"></div>
+      <button type="button" class="category-toggle" id="learnToggleCategories">
+        Signalgruppen auswählen ▼
+      </button>
+    </div>
+
+    <label class="filter-box" for="onlyWrongFilter">
+      <input type="checkbox" id="onlyWrongFilter">
+      <span>🎯 Nur falsch beantwortete Signale üben (<b id="wrongCount">0</b>)</span>
+    </label>
+
+    <div class="row">
+      <div>
+        <label>Fortschritt</label>
+        <strong id="learnCounter" style="display:block;margin-top:12px;">Frage 1</strong>
+      </div>
+      <div>
+        <label>Verfügbare Signale</label>
+        <strong id="learnAvailable" style="display:block;margin-top:12px;">0</strong>
+      </div>
+    </div>
+
+    <div class="progress"><span id="learnProgress"></span></div>
+
+    <img id="learnImage" class="signal-image" alt="Signalbild" hidden>
+    <div id="learnNoImage" class="placeholder">Kein Signalbild hinterlegt</div>
+
+    <p><b>Erkenne das Signal. Trage alle drei Angaben selbst ein:</b></p>
+    <label for="learnShort">1. Kurzbezeichnung</label>
+    <input id="learnShort" placeholder="z. B. Ne 1" autocomplete="off">
+    <label for="learnLong">2. Langbezeichnung</label>
+    <input id="learnLong" placeholder="z. B. Trapeztafel" autocomplete="off">
+    <label for="learnMeaning">3. Bedeutung</label>
+    <textarea id="learnMeaning" placeholder="Vollständige Bedeutung des Signals..."></textarea>
+
+    <div class="actions">
+      <button type="button" class="primary" id="checkLearn">Antwort prüfen</button>
+      <button type="button" id="skipLearn">Überspringen</button>
+    </div>
+    <div id="learnFeedback" class="answer" hidden></div>
+    <button type="button" class="good" id="nextLearn" hidden style="width:100%;margin-top:12px;">Nächstes Signal ➔</button>
+  </div>
+</section>
+
+<!-- PRÜFUNGSMODUS -->
+<section id="exam" class="page" hidden>
+  <div class="panel">
+    <h2>Prüfungsmodus</h2>
+    <div id="examConfig">
+      <div class="category-picker">
+        <div class="category-picker-header">
+          <strong>Signalgruppen auswählen</strong>
+          <button type="button" id="examSelectAll" style="padding:7px 10px;font-size:12px;">Alle auswählen</button>
+        </div>
+        <div id="examCategoryChoices" class="category-grid"></div>
+        <div id="examCategorySummary" class="category-summary"></div>
+        <button type="button" class="category-toggle" id="examToggleCategories">
+          Signalgruppen auswählen ▼
+        </button>
+      </div>
+
+      <label for="examLength">Anzahl der Fragen</label>
+      <select id="examLength">
+        <option value="10">10 Fragen</option>
+        <option value="20">20 Fragen</option>
+        <option value="30">30 Fragen</option>
+        <option value="50">50 Fragen</option>
+      </select>
+      <button type="button" class="primary" id="startExam" style="width:100%;margin-top:8px;">Prüfung starten</button>
+      <div id="examAvailable" class="muted" style="margin-top:10px;"></div>
+    </div>
+
+    <div id="examArea" hidden>
+      <hr>
+      <div class="row">
+        <strong id="examCounter">Frage 1</strong>
+        <strong id="examTimer" style="text-align:right;">00:00</strong>
+      </div>
+      <div class="progress"><span id="examProgress"></span></div>
+
+      <img id="examImage" class="signal-image" alt="Signalbild" hidden>
+      <div id="examNoImage" class="placeholder" hidden>Kein Signalbild hinterlegt</div>
+
+      <label for="examShort">1. Kurzbezeichnung</label>
+      <input id="examShort" placeholder="Kurzbezeichnung" autocomplete="off">
+      <label for="examLong">2. Langbezeichnung</label>
+      <input id="examLong" placeholder="Langbezeichnung" autocomplete="off">
+      <label for="examMeaning">3. Bedeutung</label>
+
+      <textarea id="examMeaning" placeholder="Bedeutung des Signals"></textarea>
+
+      <button type="button" class="primary" id="submitExam" style="width:100%;">Antwort abgeben</button>
+      <div id="examFeedback" class="answer" hidden></div>
+      <button type="button" id="examNext" hidden style="width:100%;margin-top:12px;">Weiter ➔</button>
+    </div>
+
+    <div id="examResult" class="answer" hidden></div>
+  </div>
+</section>
+
+<!-- STATISTIK -->
+<section id="stats" class="page" hidden>
+  <div class="panel">
+    <h2>Deine Lernstatistik</h2>
+    <div class="stat-grid">
+      <div class="stat">Beantwortete Fragen<strong id="statAnswered">0</strong></div>
+      <div class="stat">Erreichte Punkte<strong id="statPoints">0</strong></div>
+      <div class="stat">Punktequote<strong id="statRate">0 %</strong></div>
+      <div class="stat">Absolvierte Prüfungen<strong id="statExams">0</strong></div>
+    </div>
+    <hr>
+    <h3>Letztes Prüfungsergebnis</h3>
+    <div id="lastExamResult" class="muted">Noch keine Prüfung absolviert.</div>
+    <button type="button" class="danger" id="resetStats" style="width:100%;margin-top:14px;">Statistik & Fehlerliste zurücksetzen</button>
+  </div>
+</section>
+
+<!-- FREUNDE -->
+<section id="friends" class="page" hidden>
+  <div class="panel">
+    <h2>👥 Freunde & Kontakte</h2>
+    <p class="muted">Füge Kollegen per E-Mail hinzu, um Lerngruppen zu gründen oder Signale zu teilen.</p>
+
+    <label for="friendEmail">E-Mail-Adresse des Kollegen</label>
+    <input type="email" id="friendEmail" list="userAutocompleteList" placeholder="kollege@email.de" autocomplete="off">
+    <button type="button" class="primary" id="sendFriendRequestBtn" style="width:100%;">Freundschaftsanfrage senden</button>
+
+    <hr>
+    <h3>Anfragen & Freunde</h3>
+    <div id="friendRequestsList"><p class="muted">Lade Freunde...</p></div>
+  </div>
+</section>
+
+<!-- LERNGRUPPEN -->
+<section id="studyGroups" class="page" hidden>
+  <div class="panel">
+    <h2>👥 Lerngruppen</h2>
+    <p class="muted">Lerne gemeinsam mit Kollegen in Lerngruppen abseits deines privaten Bereichs.</p>
+
+    <div class="actions">
+      <button type="button" class="primary" id="showCreateGroupBtn">+ Neue Lerngruppe erstellen</button>
+    </div>
+
+    <div id="createGroupForm" class="panel" style="margin-top:14px;" hidden>
+      <h3>Lerngruppe erstellen</h3>
+      <label for="newGroupName">Gruppenname</label>
+      <input id="newGroupName" placeholder="z. B. Azubi-Klasse 2026">
+      <button type="button" class="primary" id="createGroupSubmit">Gruppe anlegen</button>
+      <button type="button" id="cancelCreateGroup">Abbrechen</button>
+    </div>
+
+    <hr>
+    <div id="myStudyGroupsList"><p class="muted">Lade Lerngruppen...</p></div>
+  </div>
+</section>
+
+<!-- EINZELNE LERNGRUPPEN-ANSICHT -->
+<section id="groupDetail" class="page" hidden>
+  <div class="panel">
+    <button type="button" id="backToGroups" style="margin-bottom:12px;">← Zurück zu Lerngruppen</button>
+    <h2 id="groupDetailTitle">Lerngruppe</h2>
+    <p class="muted" id="groupDetailCreator"></p>
+
+    <div class="actions" style="margin-bottom:14px;">
+      <button type="button" class="primary" id="groupInviteBtn">＋ Mitglied einladen</button>
+      <button type="button" id="groupManageMembersBtn">⚙️ Mitglieder & Rechte</button>
+      <button type="button" class="primary good" id="groupLearnBtn">📚 Gruppe lernen</button>
+    </div>
+
+    <hr>
+    <h3>Signale der Lerngruppe (<span id="groupSignalCount">0</span>)</h3>
+    <div class="actions">
+      <button type="button" class="primary" id="groupAddSignalBtn" hidden>+ Signal zur Gruppe hinzufügen</button>
+    </div>
+    <div id="groupSignalsList" style="margin-top:12px;"><p class="muted">Keine Signale in der Gruppe.</p></div>
+  </div>
+</section>
+
+<!-- KURSE (TRAINER & SCHÜLER) -->
+<section id="courses" class="page" hidden>
+  <div class="panel">
+    <h2>🎓 Kurse & Schulungen</h2>
+    <p class="muted">Nimm als Schüler an Kursen teil oder erstelle als freigeschalteter Trainer Schulungen für deine Teilnehmer.</p>
+
+    <div id="trainerActionBox" style="margin-bottom:14px;" hidden>
+      <button type="button" class="primary" id="createCourseBtn">+ Neuen Kurs erstellen</button>
+    </div>
+
+    <div id="createCourseForm" class="panel" hidden>
+      <h3>Kurs erstellen</h3>
+      <label for="courseNameInput">Kursname</label>
+      <input id="courseNameInput" placeholder="z. B. Signalbuch Ril 301 Intensiv">
+      <button type="button" class="primary" id="submitCreateCourse">Kurs anlegen</button>
+      <button type="button" id="cancelCreateCourse">Abbrechen</button>
+    </div>
+
+    <hr>
+    <h3>Deine Kurse</h3>
+    <div id="myCoursesList"><p class="muted">Lade Kurse...</p></div>
+  </div>
+</section>
+
+<!-- EINZELNER KURS ANSICHT -->
+<section id="courseDetail" class="page" hidden>
+  <div class="panel">
+    <button type="button" id="backToCourses" style="margin-bottom:12px;">← Zurück zu Kursen</button>
+    <h2 id="courseDetailTitle">Kurs</h2>
+    <p class="muted" id="courseDetailTrainer"></p>
+
+    <div id="trainerCourseControls" hidden style="margin-bottom:14px;">
+      <button type="button" class="primary" id="courseAddMemberBtn">＋ Schüler hinzufügen</button>
+      <button type="button" class="primary" id="courseAddMaterialBtn">📄 Aufgabe / Dokument hochladen</button>
+      <button type="button" class="primary" id="courseAddHomeworkBtn">📋 Hausaufgabe aufgeben</button>
+      <button type="button" class="primary" id="coursePopupBtn">📢 Popup an Kurs senden</button>
+    </div>
+
+    <hr>
+    <h3>📚 Lernmaterialien & Aufgaben</h3>
+    <div id="courseMaterialsList"><p class="muted">Keine Materialien vorhanden.</p></div>
+
+    <hr>
+    <h3>📋 Hausaufgaben</h3>
+    <div id="courseHomeworkList"><p class="muted">Keine Hausaufgaben aufgegeben.</p></div>
+  </div>
+</section>
+
+<!-- TUTORIAL -->
+<section id="tutorial" class="page" hidden>
+  <div class="panel">
+    <h2>📖 Vollständiges App-Tutorial</h2>
+    <p class="muted">Hier findest du Erklärungen zu allen Funktionen der Plattform:</p>
+
+    <div class="tutorial-step">
+      <h3>1. 📚 Lern- & Prüfungsmodus</h3>
+      <p>Trainiere deine Signale nach Gruppen. Das System erkennt Tippfehler automatisch und wertet falsche Bedeutungen in der Prüfung als Betriebsgefahr (0 Punkte). Falsche Antworten landen automatisch im Fehler-Training.</p>
+    </div>
+
+    <div class="tutorial-step">
+      <h3>2. 👥 Freunde per E-Mail</h3>
+      <p>Füge Kollegen über ihre E-Mail-Adresse hinzu. Aus Datenschutzgründen wird keine vollständige Liste registrierter Nutzer angezeigt.</p>
+    </div>
+
+    <div class="tutorial-step">
+      <h3>3. 👥 Lerngruppen (Mit Berechtigungen)</h3>
+      <p>Jeder User kann eine Lerngruppe gründen und Freunde einladen. Der Ersteller kann feine Berechtigungen verwalten: Wer darf in der Gruppe Signale hinzufügen, wer darf sie bearbeiten und wer darf sie löschen?</p>
+    </div>
+
+    <div class="tutorial-step">
+      <h3>4. 🎓 Kurse & Trainer-System</h3>
+      <p>Normale User können über das Menü den <b>Trainer-Status beantragen</b>. Nach Bestätigung durch den Admin kannst du als Trainer eigene Kurse eröffnen. Trainer können:</p>
+      <ul style="margin:6px 0;padding-left:20px;color:var(--text);font-size:14px;">
+        <li>Schüler per E-Mail in den Kurs einladen.</li>
+        <li>Lernmaterialien und Dokumente hochladen.</li>
+        <li><b>Hausaufgaben mit Abgabefrist</b> aufgeben (Schüler haben einen Abgabe-Button).</li>
+        <li>Bildschirm-Popups und Direktnachrichten direkt an Kursteilnehmer senden.</li>
+      </ul>
+    </div>
+
+    <div class="tutorial-step">
+      <h3>5. 📬 Postfach & Administrator-Funktionen</h3>
+      <p>Erhalte Antworten auf Support-Anfragen, Direktnachrichten von Trainern und verwalte Admin-Broadcasts, die als nicht zu übersehendes Pop-up auf dem Bildschirm angezeigt werden.</p>
+    </div>
+  </div>
+</section>
+
+<!-- SUPPORT -->
+<section id="support" class="page" hidden>
+  <div class="panel">
+    <h2>💬 Support & Feedback</h2>
+    <label for="supportCategory">Grund deiner Nachricht</label>
+    <select id="supportCategory">
+      <option value="Problem">⚠️ Problem melden</option>
+      <option value="Bewertung">⭐ Bewertung abgeben</option>
+      <option value="Verbesserungsvorschlag">💡 Verbesserungsvorschlag</option>
+    </select>
+    <label for="supportMessage">Deine Nachricht</label>
+    <textarea id="supportMessage" placeholder="Beschreibe dein Anliegen..."></textarea>
+    <button type="button" class="primary" id="sendSupportBtn" style="width:100%;">Nachricht absenden</button>
+  </div>
+</section>
+
+<!-- POSTFACH -->
+<section id="inbox" class="page" hidden>
+  <div class="panel">
+    <div class="row" style="align-items:center;">
+      <div>
+        <h2 style="margin-bottom:4px;">📬 Dein Postfach</h2>
+        <p class="muted" style="margin:0;">Support-Antworten & Direktnachrichten vom Trainer</p>
+      </div>
+      <button type="button" id="refreshInboxBtn" style="flex:0 0 auto;">↻ Aktualisieren</button>
+    </div>
+    <hr>
+    <div id="userInboxList"><p class="muted">Lade Nachrichten...</p></div>
+  </div>
+</section>
+
+<!-- GETEILTE SIGNALE -->
+<section id="shared" class="page" hidden>
+  <div class="panel">
+    <h2>📨 Geteilte Signale</h2>
+    <div id="sharedSignalsList"><p class="muted">Keine geteilten Signale vorhanden.</p></div>
+  </div>
+</section>
+
+<!-- VERWALTUNG -->
+<section id="manage" class="page" hidden>
+
+  <div class="panel" id="adminTrainerPanel" hidden>
+    <h2 style="margin-bottom:4px;">🛡️ Trainer-Anträge verwalten</h2>
+    <div id="adminTrainerRequestsList"><p class="muted">Lade Anträge...</p></div>
+  </div>
+
+  <div class="panel" id="adminBroadcastPanel" hidden>
+    <h2 style="margin-bottom:4px;">📢 Bildschirm-Nachricht senden</h2>
+    <label for="bcTarget">Empfänger</label>
+    <select id="bcTarget">
+      <option value="all">An alle registrierten Nutzer</option>
+      <option value="specific">An bestimmte E-Mail(s)</option>
+    </select>
+    <div id="bcEmailsContainer" hidden>
+      <label for="bcEmails">E-Mail-Adressen (Komma-getrennt)</label>
+      <input id="bcEmails" list="userAutocompleteList" placeholder="kollege1@email.de">
+    </div>
+    <label for="bcTitle">Titel</label>
+    <input id="bcTitle" placeholder="Titel">
+    <label for="bcMessage">Nachricht</label>
+    <textarea id="bcMessage" placeholder="Nachricht..."></textarea>
+    <button type="button" class="primary" id="sendBroadcastBtn" style="width:100%;">Abschicken</button>
+  </div>
+
+  <div class="panel" id="adminStatsPanel" hidden>
+    <div class="row" style="align-items:center;">
+      <div><h2 style="margin-bottom:4px;">📈 Nutzerstatistik</h2></div>
+      <button type="button" id="refreshAdminStats" style="flex:0 0 auto;">↻</button>
+    </div>
+    <div class="stat-grid" style="margin-top:14px;">
+      <div class="stat">Gerade online<strong id="adminOnline">–</strong></div>
+      <div class="stat">Heute aktiv<strong id="adminToday">–</strong></div>
+      <div class="stat">7 Tage<strong id="adminWeek">–</strong></div>
+      <div class="stat">30 Tage<strong id="adminMonth">–</strong></div>
+      <div class="stat">Registriert<strong id="adminTotal">–</strong></div>
+    </div>
+  </div>
+
+  <div class="panel" id="adminSupportPanel" hidden>
+    <h2>📨 Support-Anfragen</h2>
+    <div id="adminSupportList"><p class="muted">Lade Anfragen...</p></div>
+  </div>
+
+  <div class="panel">
+    <h2 id="formTitle">Signal hinzufügen</h2>
+    <input type="hidden" id="editId">
+    <label for="shortName">Kurzbezeichnung</label>
+    <input id="shortName" placeholder="z. B. Lf 1">
+    <label for="longName">Langbezeichnung</label>
+    <input id="longName" placeholder="z. B. Trapeztafel">
+    <label for="meaning">Bedeutung</label>
+    <textarea id="meaning" placeholder="Vollständige Bedeutung..."></textarea>
+    <label for="category">Kategorie</label>
+    <select id="category"></select>
+    <label for="imageUrl">Bild-URL (optional)</label>
+    <input id="imageUrl" placeholder="https://...">
+    <div class="actions">
+      <button type="button" id="pickGallery">🖼️ Galerie</button>
+      <button type="button" id="pickCamera">📸 Kamera</button>
+    </div>
+    <input type="file" id="imageFile" accept="image/*" hidden>
+    <input type="file" id="cameraFile" accept="image/*" capture="environment" hidden>
+    <div class="actions" style="margin-top:12px;">
+      <button type="button" class="primary" id="saveSignal">Signal speichern</button>
+      <button type="button" id="clearForm">Formular leeren</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Gespeicherte Signale: <span id="signalCount" class="brand">0</span></h3>
+    <input id="searchSignals" placeholder="Signal suchen...">
+    <div class="bulk-toolbar">
+      <div class="signal-select-row">
+        <label><input type="checkbox" id="selectAllSignals"> Alle auswählen</label>
+      </div>
+      <div class="actions">
+        <button type="button" id="clearSelection">Aufheben</button>
+        <button type="button" class="primary" id="shareSelected" disabled>📨 Teilen</button>
+        <button type="button" class="danger" id="deleteSelected" disabled>🗑 Löschen</button>
+      </div>
+      <div id="selectionCount" class="selection-count">0 ausgewählt</div>
+    </div>
+    <div id="signalList"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Datensicherung</h2>
+    <div class="actions">
+      <button type="button" id="exportData">Daten exportieren</button>
+      <button type="button" id="importButton">Daten importieren</button>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+</section>
+</main>
+
+<!-- DATALIST FÜR E-MAIL AUTO-VERVOLLSTÄNDIGUNG -->
+<datalist id="userAutocompleteList"></datalist>
+
+<nav id="mainNav" hidden>
+  <button type="button" class="active" data-page="learn"><span class="icon">📚</span><span>Lernen</span></button>
+  <button type="button" data-page="exam"><span class="icon">📝</span><span>Prüfung</span></button>
+  <button type="button" data-page="stats"><span class="icon">📊</span><span>Statistik</span></button>
+  <button type="button" data-page="manage"><span class="icon">⚙️</span><span>Verwaltung</span></button>
+</nav>
+
+<script>
+(function(){
+"use strict";
+
+const SUPABASE_URL="https://iefvluyvbiusrbccoaju.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_P-Vg2K2OqNux57j58aBDGg_NOKpLOS1";
+const _supabase=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=id=>document.getElementById(id);
+
+const ADMIN_EMAIL="Dominique.aghabozorgi@yahoo.com";
+let currentUser=null;
+let activityInterval=null;
+let activityErrorShown=false;
+
+let allRegisteredUsers=[];
+let signals=[];
+let stats=JSON.parse(localStorage.getItem("armando_signal_stats")||'{"answered":0,"points":0,"exams":0,"lastExam":null}');
+let wrongSignalIds=new Set(JSON.parse(localStorage.getItem("armando_wrong_signals")||"[]"));
+let current=null;
+let learnNumber=0;
+let learnDone=false;
+let tempImageBase64="";
+let imageLoadToken=0;
+let selectedSignalIds=new Set();
+let bulkDeleteRunning=false;
+let exportRunning=false;
+
+let activeGroupId=null;
+let activeCourseId=null;
+
+const BASE_CATEGORIES=["Lf","Bü","Ne","Hp","Vr","Ks","Hl","Sh","Ra","Zs","El","So","Wn","Zp","Zg","Ts","Mastschilder","Sonstige"];
+const CATEGORY_LABELS={"Lf":"Lf – Langsamfahrsignale","Bü":"Bü – Bahnübergangssignale","Ne":"Ne – Nebensignale","Hp":"Hp – Hauptsignale","Vr":"Vr – Vorsignale","Ks":"Ks – Kombinationssignale","Hl":"Hl – Hl-Signale","Sh":"Sh – Schutzsignale","Ra":"Ra – Rangiersignale","Zs":"Zs – Zusatzsignale","El":"El – Fahrleitungssignale","So":"So – Sonstige Signale","Wn":"Wn – Weichensignale","Zp":"Zp – Zugpersonalsignale","Zg":"Zg – Zugbegleitersignale","Ts":"Ts – Türen- und sonstige Betriebssignale","Mastschilder":"Mastschilder","Sonstige":"Sonstige"};
+
+let selectedLearnCategories=new Set(BASE_CATEGORIES);
+let selectedExamCategories=new Set(BASE_CATEGORIES);
+let knownCategories=new Set(BASE_CATEGORIES);
+let learnCategoriesOpen=false;
+let examCategoriesOpen=false;
+
+function saveLocalProgress(){
+  localStorage.setItem("armando_signal_stats",JSON.stringify(stats));
+  localStorage.setItem("armando_wrong_signals",JSON.stringify([...wrongSignalIds]));
+  if($("wrongCount"))$("wrongCount").textContent=wrongSignalIds.size;
+}
+
+function notify(message){
+  const el=$("notice");
+  if(!el)return;
+  el.textContent=message;
+  setTimeout(()=>{if(el.textContent===message)el.textContent="";},5000);
+}
+
+/* =====================================================
+   NUTZERAKTIVITÄT
+   ===================================================== */
+
+async function updateLastSeen(){
+  if(!currentUser)return;
+
+  try{
+    const {error}=await _supabase
+      .from("user_profiles")
+      .update({last_seen:new Date().toISOString()})
+      .eq("id",currentUser.id);
+
+    if(error){
+      console.error("Aktivität konnte nicht gespeichert werden:",error);
+
+      if(!activityErrorShown){
+        activityErrorShown=true;
+        notify("Aktivität konnte nicht gespeichert werden. Bitte Datenbankrechte prüfen.");
+      }
+    }else{
+      activityErrorShown=false;
+    }
+  }catch(err){
+    console.error("Fehler bei der Aktivitätserfassung:",err);
+  }
+}
+
+function startActivityTracking(){
+  if(activityInterval){
+    clearInterval(activityInterval);
+    activityInterval=null;
+  }
+
+  updateLastSeen();
+
+  activityInterval=setInterval(()=>{
+    if(document.visibilityState==="visible"){
+      updateLastSeen();
+    }
+  },60000);
+}
+
+/* =====================================================
+   ADMIN-NUTZERSTATISTIK
+   ===================================================== */
+
+async function loadAdminStats(){
+  if(String(currentUser?.email||"").toLowerCase()
+    !==ADMIN_EMAIL.toLowerCase())return;
+
+  const ids=[
+    "adminOnline",
+    "adminToday",
+    "adminWeek",
+    "adminMonth",
+    "adminTotal"
+  ];
+
+  ids.forEach(id=>{
+    if($(id))$(id).textContent="…";
+  });
+
+  try{
+    const {data,error}=await _supabase.rpc(
+      "get_admin_user_activity_stats"
+    );
+
+    if(error)throw error;
+
+    const s=Array.isArray(data)?data[0]:data;
+
+    if(!s)throw new Error("Keine Statistikdaten erhalten.");
+
+    $("adminOnline").textContent=s.online_now??0;
+    $("adminToday").textContent=s.active_today??0;
+    $("adminWeek").textContent=s.active_7_days??0;
+    $("adminMonth").textContent=s.active_30_days??0;
+    $("adminTotal").textContent=s.total_registered??0;
+
+  }catch(err){
+    console.error("Statistikfehler:",err);
+
+    ids.forEach(id=>{
+      if($(id))$(id).textContent="–";
+    });
+
+    notify("Nutzerstatistik konnte nicht geladen werden: "+err.message);
+  }
+}
+
+function esc(value){
+  return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+}
+
+async function loadRegisteredUsersList(){
+  // Datenschutz: Keine vollstaendige Nutzerliste abrufen.
+  // Freunde und Kursteilnehmer werden direkt per E-Mail eingeladen.
+  allRegisteredUsers=[];
+  const list=$("userAutocompleteList");
+  if(list)list.replaceChildren();
+}
+
+/* AUTHENTIFIZIERUNG & TRAINER-STATUS */
+function switchAuthView(viewName){
+  ["loginView","registerView","forgotView","newPasswordView"].forEach(id=>{
+    $(id).hidden=(id!==viewName);
+  });
+}
+
+async function handleLogin(){
+  const email=$("loginEmail").value.trim();
+  const password=$("loginPassword").value.trim();
+  if(!email||!password)return notify("Bitte E-Mail und Passwort eingeben.");
+  const {data,error}=await _supabase.auth.signInWithPassword({email,password});
+  if(error)return notify("Login fehlgeschlagen: "+error.message);
+  currentUser=data.user;
+  initUserSession();
+  notify("Erfolgreich angemeldet!");
+}
+
+async function handleRegister(){
+  const email=$("regEmail").value.trim();
+  const password=$("regPassword").value.trim();
+  const confirmPw=$("regPasswordConfirm").value.trim();
+  if(!email||!password)return notify("Bitte E-Mail und Passwort ausfüllen.");
+  if(password.length<6)return notify("Mindestens 6 Zeichen.");
+  if(password!==confirmPw)return notify("Passwörter stimmen nicht überein.");
+
+  const {data,error}=await _supabase.auth.signUp({email,password});
+  if(error)return notify("Registrierung fehlgeschlagen: "+error.message);
+  notify("Konto erstellt! Bitte einloggen.");
+  switchAuthView("loginView");
+}
+
+async function handleLogout(){
+  if(activityInterval){
+    clearInterval(activityInterval);
+    activityInterval=null;
+  }
+
+  await _supabase.auth.signOut();
+  currentUser=null;
+  signals=[];
+  $("appMain").hidden=true;
+  $("mainNav").hidden=true;
+  $("menuBtn").hidden=true;
+  $("logoutBtn").style.display="none";
+  $("authPanel").hidden=false;
+  switchAuthView("loginView");
+  notify("Erfolgreich abgemeldet.");
+}
+
+async function checkSession(){
+  const {data}=await _supabase.auth.getSession();
+  if(data.session){
+    currentUser=data.session.user;
+    initUserSession();
+  }
+}
+
+async function initUserSession(){
+  $("authPanel").hidden=true;
+  $("appMain").hidden=false;
+  $("mainNav").hidden=false;
+  $("menuBtn").hidden=false;
+  $("logoutBtn").style.display="block";
+  $("sidebarUserEmail").textContent="Angemeldet als: "+(currentUser?.email||"");
+
+  // Aktivität des angemeldeten Nutzers erfassen
+
+
+  startActivityTracking();
+
+  const admin=String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+  if($("adminStatsPanel"))$("adminStatsPanel").hidden=!admin;
+  if($("adminSupportPanel"))$("adminSupportPanel").hidden=!admin;
+  if($("adminBroadcastPanel"))$("adminBroadcastPanel").hidden=!admin;
+  if($("adminTrainerPanel"))$("adminTrainerPanel").hidden=!admin;
+
+  await loadRegisteredUsersList();
+  checkTrainerStatus();
+
+  if(admin){
+    loadAdminStats();
+    loadAdminSupport();
+    loadAdminTrainerRequests();
+  }
+
+  loadCloudSignals();
+  loadUserInbox();
+  loadSharedSignals();
+  checkForBroadcasts();
+}
+
+async function checkTrainerStatus(){
+  if(!currentUser)return;
+  const container=$("trainerStatusContainer");
+  const trainerBox=$("trainerActionBox");
+  const admin=String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+
+  try{
+    const {data}=await _supabase.from("user_profiles").select("is_trainer, trainer_requested").eq("id",currentUser.id).maybeSingle();
+    if(admin){
+      container.innerHTML=`<span class="ticket-tag" style="background:var(--accent);color:#000;">Administrator</span>`;
+      if(trainerBox)trainerBox.hidden=false;
+      return;
+    }
+    if(data?.is_trainer){
+      container.innerHTML=`<span class="ticket-tag" style="background:var(--green);color:#fff;">✓ Aktivierter Trainer</span>`;
+      if(trainerBox)trainerBox.hidden=false;
+    }else if(data?.trainer_requested){
+      container.innerHTML=`<span class="ticket-tag">⏳ Trainer-Antrag ausstehend</span>`;
+      if(trainerBox)trainerBox.hidden=true;
+    }else{
+      container.innerHTML=`<button type="button" class="link-btn" id="requestTrainerBtn" style="font-size:12px;">Als Trainer bewerben</button>`;
+      if(trainerBox)trainerBox.hidden=true;
+      $("requestTrainerBtn")?.addEventListener("click", requestTrainerRole);
+    }
+  }catch(err){}
+}
+
+async function requestTrainerRole(){
+  try{
+    const {error}=await _supabase.from("user_profiles").update({trainer_requested:true}).eq("id",currentUser.id);
+    if(error)throw error;
+    notify("Trainer-Antrag wurde an den Administrator gesendet!");
+    checkTrainerStatus();
+  }catch(err){
+    notify("Fehler: "+err.message);
+  }
+}
+
+async function loadAdminTrainerRequests(){
+  if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase())return;
+  const container=$("adminTrainerRequestsList");
+  if(!container)return;
+  try{
+    const {data}=await _supabase.from("user_profiles").select("*").eq("trainer_requested",true).eq("is_trainer",false);
+    if(!data||!data.length){
+      container.innerHTML="<p class='muted'>Keine ausstehenden Trainer-Anträge.</p>";
+      return;
+    }
+    container.innerHTML=data.map(u=>`
+      <div class="signal-card">
+        <p><b>${esc(u.email)}</b> möchte Trainer werden.</p>
+        <div class="actions">
+          <button type="button" class="good btn-accept-trainer" data-id="${esc(u.id)}">Bestätigen</button>
+          <button type="button" class="danger btn-deny-trainer" data-id="${esc(u.id)}">Ablehnen</button>
+        </div>
+      </div>`).join("");
+  }catch(err){container.innerHTML="<p class='muted'>Fehler beim Laden.</p>";}
+}
+
+document.addEventListener("click", async e=>{
+  const accept=e.target.closest(".btn-accept-trainer");
+  const deny=e.target.closest(".btn-deny-trainer");
+  if(accept){
+    await _supabase.from("user_profiles").update({is_trainer:true, trainer_requested:false}).eq("id",accept.dataset.id);
+    notify("Trainer bestätigt!");
+    loadAdminTrainerRequests();
+  }
+  if(deny){
+    await _supabase.from("user_profiles").update({trainer_requested:false}).eq("id",deny.dataset.id);
+    notify("Antrag abgelehnt.");
+    loadAdminTrainerRequests();
+  }
+});
+
+/* POP-UPS & BROADCASTS */
+async function checkForBroadcasts(){
+  if(!currentUser)return;
+  try{
+    const {data: broadcasts}=await _supabase.from("broadcast_messages").select("*").order("created_at",{ascending:false});
+    if(!broadcasts||!broadcasts.length)return;
+    const {data: reads}=await _supabase.from("broadcast_reads").select("broadcast_id").eq("user_id",currentUser.id);
+    const readIds=new Set((reads||[]).map(r=>r.broadcast_id));
+    const unread=broadcasts.find(b=>{
+      if(readIds.has(b.id))return false;
+      if(b.target_type==="all")return true;
+      if(b.target_type==="specific"&&Array.isArray(b.target_emails)){
+        return b.target_emails.map(e=>e.toLowerCase().trim()).includes(currentUser.email.toLowerCase().trim());
+      }
+      return false;
+    });
+    if(unread){
+      window.currentPopupId=unread.id;
+
+      $("popupTitle").textContent=unread.title;
+      $("popupMessage").textContent=unread.message;
+      $("popupBackdrop").hidden=false;
+      $("broadcastPopup").hidden=false;
+    }
+  }catch(err){}
+}
+
+async function markBroadcastAsRead(){
+  if(!currentUser||!window.currentPopupId)return;
+  try{
+    await _supabase.from("broadcast_reads").insert([{broadcast_id:window.currentPopupId, user_id:currentUser.id}]);
+  }catch(err){}
+  $("popupBackdrop").hidden=true;
+  $("broadcastPopup").hidden=true;
+  window.currentPopupId=null;
+}
+
+/* FREUNDE */
+async function sendFriendRequest(){
+  const recipient=$("friendEmail").value.trim().toLowerCase();
+  if(!recipient)return notify("Bitte E-Mail eingeben.");
+  if(recipient===currentUser.email.toLowerCase())return notify("Du kannst dich nicht selbst hinzufügen.");
+
+  try{
+    const {error}=await _supabase.from("friendships").insert([{
+      sender_email:currentUser.email.toLowerCase(),
+      recipient_email:recipient,
+      status:"pending"
+    }]);
+    if(error)throw error;
+    $("friendEmail").value="";
+    notify("Freundschaftsanfrage gesendet!");
+    loadFriends();
+  }catch(err){
+    notify("Fehler: "+err.message);
+  }
+}
+
+async function loadFriends(){
+  const container=$("friendRequestsList");
+  if(!container)return;
+  try{
+    const {data}=await _supabase.from("friendships").select("*").or(`sender_email.eq.${currentUser.email.toLowerCase()},recipient_email.eq.${currentUser.email.toLowerCase()}`);
+    if(!data||!data.length){
+      container.innerHTML="<p class='muted'>Noch keine Freunde oder Anfragen.</p>";
+      return;
+    }
+    container.innerHTML=data.map(f=>{
+      const isSender=f.sender_email===currentUser.email.toLowerCase();
+      if(f.status==="pending"&&!isSender){
+        return `<div class="signal-card"><p>Anfrage von <b>${esc(f.sender_email)}</b></p><button type="button" class="good btn-accept-friend" data-id="${esc(f.id)}">Annehmen</button></div>`;
+      }
+      return `<div class="signal-card"><p>${esc(isSender?f.recipient_email:f.sender_email)} (${f.status==="accepted"?"Verbunden":"Ausstehend"})</p></div>`;
+    }).join("");
+  }catch(err){container.innerHTML="<p class='muted'>Fehler beim Laden.</p>";}
+}
+
+document.addEventListener("click", async e=>{
+  const btn=e.target.closest(".btn-accept-friend");
+  if(btn){
+    await _supabase.from("friendships").update({status:"accepted"}).eq("id",btn.dataset.id);
+    notify("Freundschaft angenommen!");
+    loadFriends();
+  }
+});
+
+/* LERNGRUPPEN */
+async function createStudyGroup(){
+  const name=$("newGroupName").value.trim();
+  if(!name)return notify("Bitte Gruppenname eingeben.");
+  try{
+    const {data,error}=await _supabase.from("study_groups").insert([{name, creator_email:currentUser.email.toLowerCase()}]).select().single();
+    if(error)throw error;
+    await _supabase.from("study_group_members").insert([{group_id:data.id, user_email:currentUser.email.toLowerCase(), role:"owner", can_add:true, can_edit:true, can_delete:true}]);
+    $("newGroupName").value="";
+    $("createGroupForm").hidden=true;
+    notify("Lerngruppe erstellt!");
+    loadStudyGroups();
+  }catch(err){notify("Fehler: "+err.message);}
+}
+
+async function loadStudyGroups(){
+  const container=$("myStudyGroupsList");
+  if(!container)return;
+  try{
+    const {data: memberships}=await _supabase.from("study_group_members").select("group_id").eq("user_email",currentUser.email.toLowerCase());
+    if(!memberships||!memberships.length){
+    container.innerHTML="<p class='muted'>Du bist in keiner Lerngruppe.</p>";return;}
+    const groupIds=memberships.map(m=>m.group_id);
+    const {data: groups}=await _supabase.from("study_groups").select("*").in("id",groupIds);
+    container.innerHTML=(groups||[]).map(g=>`
+      <div class="signal-card">
+        <h3>${esc(g.name)}</h3>
+        <small class="muted">Erstellt von: ${esc(g.creator_email)}</small>
+        <button type="button" class="primary btn-open-group" data-id="${esc(g.id)}" style="width:100%;margin-top:10px;">Öffnen</button>
+      </div>`).join("");
+  }catch(err){container.innerHTML="<p class='muted'>Fehler beim Laden.</p>";}
+}
+
+document.addEventListener("click", e=>{
+  const btn=e.target.closest(".btn-open-group");
+  if(btn){
+    activeGroupId=btn.dataset.id;
+    openStudyGroup(activeGroupId);
+  }
+});
+
+async function openStudyGroup(groupId){
+  showPage("groupDetail");
+
+  try{
+    const {data: group}=await _supabase.from("study_groups").select("*").eq("id",groupId).single();
+    $("groupDetailTitle").textContent=group.name;
+    $("groupDetailCreator").textContent="Erstellt von: "+group.creator_email;
+    loadGroupSignals(groupId);
+  }catch(err){}
+}
+
+async function loadGroupSignals(groupId){
+  const container=$("groupSignalsList");
+  try{
+    const {data}=await _supabase.from("study_group_signals").select("*").eq("group_id",groupId);
+    $("groupSignalCount").textContent=(data||[]).length;
+    if(!data||!data.length){container.innerHTML="<p class='muted'>Keine Signale in der Gruppe.</p>";return;}
+    container.innerHTML=data.map(s=>`
+      <div class="signal-card">
+        <h3>${esc(s.short)} – ${esc(s.long)}</h3>
+        <p>${esc(s.meaning)}</p>
+      </div>`).join("");
+  }catch(err){}
+}
+
+/* KURSE */
+async function createCourse(){
+  const name=$("courseNameInput").value.trim();
+  if(!name)return notify("Bitte Kursnamen eingeben.");
+  try{
+    const {error}=await _supabase.from("courses").insert([{name, trainer_email:currentUser.email.toLowerCase()}]);
+    if(error)throw error;
+    $("courseNameInput").value="";
+    $("createCourseForm").hidden=true;
+    notify("Kurs erstellt!");
+    loadCourses();
+  }catch(err){notify("Fehler: "+err.message);}
+}
+
+async function loadCourses(){
+  const container=$("myCoursesList");
+  try{
+    const {data,error}=await _supabase.from("courses").select("*").order("created_at",{ascending:false});
+    if(error)throw error;
+    container.innerHTML=(data||[]).map(c=>`<div class="signal-card"><h3>${esc(c.name)}</h3><small>Trainer: ${esc(c.trainer_email)}</small><button type="button" class="primary btn-open-course" data-id="${esc(c.id)}" style="width:100%;margin-top:10px">Kurs öffnen</button></div>`).join("")||"<p class='muted'>Keine Kurse vorhanden.</p>";
+  }catch(err){container.textContent="Kurse konnten nicht geladen werden: "+err.message;}
+}
+
+document.addEventListener("click", e=>{
+  const btn=e.target.closest(".btn-open-course");
+  if(btn){
+    activeCourseId=btn.dataset.id;
+    openCourse(activeCourseId);
+  }
+});
+
+async function openCourse(courseId){
+  showPage("courseDetail");
+  try{
+    const {data: course}=await _supabase.from("courses").select("*").eq("id",courseId).single();
+    $("courseDetailTitle").textContent=course.name;
+    $("courseDetailTrainer").textContent="Trainer: "+course.trainer_email;
+    const isTrainer=course.trainer_email.toLowerCase()===currentUser.email.toLowerCase() || currentUser.email.toLowerCase()===ADMIN_EMAIL.toLowerCase();
+    $("trainerCourseControls").hidden=!isTrainer;
+    await loadCourseMaterials(courseId, isTrainer);
+    await baCourseExtras(courseId, isTrainer);
+  }catch(err){
+    notify("Kurs konnte nicht geöffnet werden: "+err.message);
+    console.error("Kurs öffnen fehlgeschlagen:",err);
+  }
+}
+
+async function loadCourseMaterials(courseId,isTrainer){
+  const mc=$("courseMaterialsList"), hc=$("courseHomeworkList");
+  try{
+    const {data,error}=await _supabase.from("course_materials").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+    if(error)throw error;
+    const card=m=>`<div class="signal-card"><h3>${esc(m.title)}</h3><p>${esc(m.description||"")}</p>${m.due_date?`<small>Frist: ${new Date(m.due_date).toLocaleString("de-DE")}</small>`:""}<div class="actions">${m.storage_path||m.file_data?`<button class="btn-course-file" data-id="${esc(m.id)}">📎 Datei öffnen</button>`:""}${m.is_homework&&!isTrainer?`<button class="primary btn-submit-hw" data-id="${esc(m.id)}">Hausaufgabe abgeben</button>`:""}${m.is_homework&&isTrainer?`<button class="btn-review-hw" data-id="${esc(m.id)}">Abgaben ansehen</button>`:""}${isTrainer?`<button class="danger btn-delete-material" data-id="${esc(m.id)}">Entfernen</button>`:""}</div></div>`;
+    mc.innerHTML=(data||[]).filter(m=>!m.is_homework).map(card).join("")||"<p class='muted'>Keine Materialien.</p>";
+    hc.innerHTML=(data||[]).filter(m=>m.is_homework).map(card).join("")||"<p class='muted'>Keine Hausaufgaben.</p>";
+    window.baMaterials=new Map((data||[]).map(m=>[m.id,m]));
+  }catch(err){mc.textContent=hc.textContent="Fehler: "+err.message;}
+}
+
+/* KURSERWEITERUNG: Kursmitglieder, Dateien, Hausaufgaben, Signale, Popups und Einzelchat */
+const BA_BUCKET="byarmando-course-files";
+let baCourse=null;
+function baDialog(title,fields,submit){
+ const old=$("baModal");if(old)old.remove();
+ const outer=document.createElement("div");outer.id="baModal";outer.style="position:fixed;inset:0;z-index:5000;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px";
+ outer.innerHTML=`<div class="panel" style="width:100%;max-width:540px;max-height:90vh;overflow:auto"><h2>${esc(title)}</h2><form id="baModalForm">${fields}<div class="actions"><button class="primary" type="submit">Speichern</button><button type="button" id="baCancel">Abbrechen</button></div></form></div>`;
+ document.body.appendChild(outer);$("baCancel").onclick=()=>outer.remove();
+ $("baModalForm").onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{await submit(new FormData(e.currentTarget));outer.remove();notify("Gespeichert.");if(activeCourseId)openCourse(activeCourseId);}catch(err){alert("Fehler: "+err.message);}finally{b.disabled=false;}};
+}
+const baField=(name,label,type="text",required=true)=>`<label>${esc(label)}<input name="${name}" type="${type}" ${required?"required":""}></label>`;
+async function baUpload(file,courseId,section,materialId){
+ if(!file)return null;
+ if(file.size>15*1024*1024)throw Error("Datei ist größer als 15 MB.");
+ const clean=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+ const path=section==="materials"?`${courseId}/materials/${crypto.randomUUID()}_${clean}`:`${courseId}/submissions/${currentUser.id}/${materialId}/${crypto.randomUUID()}_${clean}`;
+ const {error}=await _supabase.storage.from(BA_BUCKET).upload(path,file,{upsert:false});if(error)throw error;
+ return {storage_path:path,original_filename:file.name,content_type:file.type||"application/octet-stream"};
+}
+async function baOpenFile(row){
+ if(row.storage_path){const {data,error}=await _supabase.storage.from(BA_BUCKET).createSignedUrl(row.storage_path,90);if(error)throw error;window.open(data.signedUrl,"_blank","noopener");}
+ else if(row.file_data){if(/^data:|^https?:/i.test(row.file_data))window.open(row.file_data,"_blank","noopener");else alert("Altes Dateiformat kann hier nicht geöffnet werden.");}
+}
+async function baLoadMembers(){
+ const {data,error}=await _supabase.from("course_members").select("*").eq("course_id",activeCourseId);if(error)throw error;
+ const box=$("baMembers");if(!box)return;
+ box.innerHTML=(data||[]).map(m=>`<div class="signal-card">${esc(m.user_email)} ${baCourse?.trainer?`<button class="danger btn-remove-member" data-id="${esc(m.id)}">Entfernen</button><button class="btn-open-chat" data-email="${esc(m.user_email)}">💬 Chat</button>`:""}</div>`).join("")||"<p class='muted'>Keine Schüler eingetragen.</p>";
+}
+async function baCourseExtras(courseId,isTrainer){
+
+ baCourse={trainer:isTrainer};const old=$("baExtras");if(old)old.remove();
+ const wrap=document.createElement("div");wrap.id="baExtras";wrap.innerHTML=`<div class="panel"><h3>👥 Kursteilnehmer</h3><div id="baMembers"></div></div><div class="panel"><h3>🚦 Kurssignale</h3>${isTrainer?'<button id="baAddSignal" class="primary">＋ Kurssignal</button>':''}<div id="baSignals"></div></div><div class="panel"><h3>📢 Kursmitteilungen</h3><div id="baPopups"></div></div><div class="panel"><h3>💬 Privater Kurschat</h3><div id="baChat"></div></div>`;
+ $("courseDetail").appendChild(wrap);
+ await baLoadMembers();
+ const {data:ss,error:se}=await _supabase.from("course_signals").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ $("baSignals").innerHTML=se?esc(se.message):(ss||[]).map(x=>`<div class="signal-card"><b>${esc(x.short)} – ${esc(x.long)}</b><p>${esc(x.meaning)}</p>${x.image?`<img class="signal-image" src="${esc(x.image)}" alt="Signal">`:""}${isTrainer?`<button class="danger btn-delete-course-signal" data-id="${esc(x.id)}">Löschen</button>`:""}</div>`).join("")||"<p class='muted'>Noch keine Kurssignale.</p>";
+ const {data:pp,error:pe}=await _supabase.from("course_popups").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ $("baPopups").innerHTML=pe?esc(pe.message):(pp||[]).map(x=>`<div class="signal-card"><b>${esc(x.title)}</b><p>${esc(x.message)}</p></div>`).join("")||"<p class='muted'>Keine Mitteilungen.</p>";
+ if(isTrainer){$("baChat").textContent="Wähle oben einen Schüler für den privaten Chat.";$("baAddSignal").onclick=()=>baDialog("Kurssignal hinzufügen",baField("short","Kurzbezeichnung")+baField("long","Langbezeichnung")+'<label>Bedeutung<textarea name="meaning" required></textarea></label>'+baField("category","Kategorie","text",false)+baField("image","Bild-URL","url",false),async f=>{const {error}=await _supabase.from("course_signals").insert({course_id:activeCourseId,short:f.get("short"),long:f.get("long"),meaning:f.get("meaning"),category:f.get("category"),image:f.get("image")||null});if(error)throw error;});}
+ else {const {data:ts,error:te}=await _supabase.from("course_threads").select("*").eq("course_id",courseId).eq("participant_user_id",currentUser.id).maybeSingle();if(te)$("baChat").textContent=te.message;else if(ts)baRenderChat(ts.id);else $("baChat").textContent="Dein Trainer hat noch keinen Chat eröffnet.";}
+}
+async function baRenderChat(threadId){
+ const el=$("baChat");if(!el)return;
+ const {data,error}=await _supabase.from("course_messages").select("*").eq("thread_id",threadId).order("created_at");if(error){el.textContent=error.message;return;}
+ el.innerHTML=(data||[]).map(m=>`<div class="signal-card"><small>${m.sender_user_id===currentUser.id?"Du":"Gegenüber"} · ${new Date(m.created_at).toLocaleString("de-DE")}</small><p>${esc(m.body)}</p></div>`).join("")+'<form id="baChatForm"><textarea name="body" placeholder="Nachricht schreiben" required></textarea><button class="primary">Senden</button></form>';
+ $("baChatForm").onsubmit=async e=>{e.preventDefault();const body=new FormData(e.currentTarget).get("body").trim();if(!body)return;const {error}=await _supabase.from("course_messages").insert({thread_id:threadId,sender_user_id:currentUser.id,body});if(error)alert(error.message);else baRenderChat(threadId);};
+}
+async function baReview(materialId){
+ const {data,error}=await _supabase.from("course_submissions").select("*").eq("material_id",materialId).order("created_at",{ascending:false});if(error)throw error;
+ const el=$("baChat");el.innerHTML='<h3>Abgaben für diese Hausaufgabe</h3>'+((data||[]).map(x=>`<div class="signal-card"><b>${esc(x.user_email)}</b><p>${esc(x.submission_text)}</p><small>Status: ${esc(x.status||"eingereicht")}</small><div class="actions">${x.storage_path||x.file_data?`<button class="btn-review-file" data-id="${esc(x.id)}">Datei öffnen</button>`:""}<button class="btn-review-status" data-id="${esc(x.id)}">Status ändern</button></div></div>`).join("")||"<p>Keine Abgaben.</p>");window.baSubmissions=new Map((data||[]).map(x=>[x.id,x]));
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("button");if(!b||!activeCourseId||!$("courseDetail")||$("courseDetail").hidden)return;
+ try{
+ if(b.id==="courseAddMemberBtn")baDialog("Schüler hinzufügen",baField("email","E-Mail-Adresse","email"),async f=>{const {error}=await _supabase.from("course_members").insert({course_id:activeCourseId,user_email:String(f.get("email")).trim().toLowerCase()});if(error)throw error;});
+ if(b.id==="courseAddMaterialBtn"||b.id==="courseAddHomeworkBtn"){
+  const homework=b.id==="courseAddHomeworkBtn";
+  baDialog(homework?"Hausaufgabe erstellen":"Lernmaterial hinzufügen",baField("title","Titel")+'<label>Beschreibung<textarea name="description"></textarea></label>'+(homework?baField("due","Abgabefrist (optional)","datetime-local",false):"")+'<label>Datei (optional, max. 15 MB)<input name="file" type="file"></label>',async f=>{
+   const file=f.get("file"),upload=file?.size?await baUpload(file,activeCourseId,"materials"):{};
+   const {error}=await _supabase.from("course_materials").insert({course_id:activeCourseId,title:f.get("title"),description:f.get("description"),is_homework:homework,due_date:f.get("due")?new Date(f.get("due")).toISOString():null,...upload});if(error)throw error;
+  });
+ }
+ if(b.id==="coursePopupBtn")baDialog("Kursmitteilung senden",baField("title","Titel")+'<label>Nachricht<textarea name="message" required></textarea></label>',async f=>{const {error}=await _supabase.from("course_popups").insert({course_id:activeCourseId,title:f.get("title"),message:f.get("message")});if(error)throw error;});
+ if(b.classList.contains("btn-submit-hw"))baDialog("Hausaufgabe abgeben",'<label>Deine Antwort<textarea name="answer" required></textarea></label><label>Datei (optional, max. 15 MB)<input type="file" name="file"></label>',async f=>{const file=f.get("file"),upload=file?.size?await baUpload(file,activeCourseId,"submissions",b.dataset.id):{};const {error}=await _supabase.from("course_submissions").insert({material_id:b.dataset.id,user_email:currentUser.email.toLowerCase(),submission_text:f.get("answer"),status:"eingereicht",...upload});if(error)throw error;});
+ if(b.classList.contains("btn-review-hw"))await baReview(b.dataset.id);
+ if(b.classList.contains("btn-review-file"))await baOpenFile(window.baSubmissions.get(b.dataset.id));
+ if(b.classList.contains("btn-review-status"))baDialog("Abgabe bewerten",'<label>Status<select name="status"><option value="eingereicht">Eingereicht</option><option value="geprüft">Geprüft</option><option value="angenommen">Angenommen</option><option value="überarbeiten">Überarbeiten</option></select></label>',async f=>{const {error}=await _supabase.from("course_submissions").update({status:f.get("status")}).eq("id",b.dataset.id);if(error)throw error;});
+ if(b.classList.contains("btn-course-file"))await baOpenFile(window.baMaterials.get(b.dataset.id));
+ if(b.classList.contains("btn-delete-material")&&confirm("Material wirklich entfernen?")){const {error}=await _supabase.from("course_materials").delete().eq("id",b.dataset.id);if(error)throw error;openCourse(activeCourseId);}
+ if(b.classList.contains("btn-delete-course-signal")&&confirm("Kurssignal entfernen?")){const {error}=await _supabase.from("course_signals").delete().eq("id",b.dataset.id);if(error)throw error;openCourse(activeCourseId);}
+ if(b.classList.contains("btn-remove-member")&&confirm("Schüler aus Kurs entfernen?")){const {error}=await _supabase.from("course_members").delete().eq("id",b.dataset.id);if(error)throw error;openCourse(activeCourseId);}
+ if(b.classList.contains("btn-open-chat")){const email=b.dataset.email;const {data:threadId,error:te}=await _supabase.rpc("ba_open_course_chat",{p_course_id:activeCourseId,p_student_email:email});if(te)throw te;if(!threadId)throw Error("Chat konnte nicht eröffnet werden.");baRenderChat(threadId);}
+ }catch(err){alert("Fehler: "+err.message);}
+});
+
+/* SUPPORT & POSTFACH */
+async function sendSupportMessage(){
+  const category=$("supportCategory").value;
+  const message=$("supportMessage").value.trim();
+  if(!message)return notify("Bitte Nachricht eingeben.");
+  try{
+    await _supabase.from("support_messages").insert([{user_id:currentUser.id, user_email:currentUser.email, category, message}]);
+    $("supportMessage").value="";
+    notify("Gesendet!");
+    loadUserInbox();
+    showPage("inbox");
+  }catch(err){notify("Fehler: "+err.message);}
+}
+
+async function loadUserInbox(markAsRead=false){
+  if(!currentUser)return;
+  const container=$("userInboxList");
+  try{
+    const {data}=await _supabase.from("support_messages").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
+    const unread=(data||[]).filter(m=>m.admin_reply&&!m.is_read).length;
+    $("inboxUnreadBadge").hidden=(unread===0);
+    $("inboxUnreadBadge").textContent=unread;
+    if(markAsRead&&unread>0){
+      await _supabase.from("support_messages").update({is_read:true}).eq("user_id",currentUser.id).not("admin_reply","is",null);
+      $("inboxUnreadBadge").hidden=true;
+    }
+    container.innerHTML=(data||[]).map(m=>`<div class="signal-card"><span class="ticket-tag">${esc(m.category)}</span><p>${esc(m.message)}</p>${m.admin_reply?`<div class="admin-reply-box"><strong>Antwort:</strong> ${esc(m.admin_reply)}</div>`:""}</div>`).join("");
+  }catch(err){}
+}
+
+async function loadAdminSupport(){
+  const container=$("adminSupportList");
+  if(!container)return;
+  try{
+    const {data}=await _supabase.from("support_messages").select("*").order("created_at",{ascending:false});
+    container.innerHTML=(data||[]).map(m=>`<div class="signal-card"><p><b>${esc(m.user_email)}</b>: ${esc(m.message)}</p><textarea id="reply_${esc(m.id)}" placeholder="Antwort...">${esc(m.admin_reply||"")}</textarea><button type="button" class="good btn-admin-reply" data-id="${esc(m.id)}">Senden</button></div>`).join("");
+  }catch(err){}
+}
+
+document.addEventListener("click", async e=>{
+  const btn=e.target.closest(".btn-admin-reply");
+  if(btn){
+    const text=$("reply_"+btn.dataset.id).value.trim();
+    if(text)await _supabase.from("support_messages").update({admin_reply:text, is_read:false}).eq("id",btn.dataset.id);
+    notify("Antwort gesendet!");
+    loadAdminSupport();
+  }
+});
+
+/* GRUNDLEGENDE SIGNAL-VERWALTUNG */
+async function loadCloudSignals(){
+  if(!currentUser)return;
+  try{
+    const {data}=await _supabase.from("signals").select("*").eq("user_id",currentUser.id);
+    signals=data||[];
+    renderList();
+    nextLearn();
+  }catch(err){}
+}
+
+async function saveSignal(){
+  const id=$("editId").value;
+  const short=$("shortName").value.trim();
+  const long=$("longName").value.trim();
+  const meaning=$("meaning").value.trim();
+  const category=$("category").value||"Sonstige";
+  if(!short||!long||!meaning)return notify("Bitte alle Felder ausfüllen.");
+  const imageValue=tempImageBase64||$("imageUrl").value.trim();
+  const payload={short,long,meaning,category,image:imageValue,user_id:currentUser.id};
+  if(id)await _supabase.from("signals").update(payload).eq("id",id);
+
+  else await _supabase.from("signals").insert([payload]);
+  clearForm();
+  loadCloudSignals();
+  notify("Signal gespeichert!");
+}
+
+async function deleteSignal(id){
+  if(!confirm("Wirklich löschen?"))return;
+  await _supabase.from("signals").delete().eq("id",id);
+  loadCloudSignals();
+}
+
+function clearForm(){
+  ["editId","shortName","longName","meaning","imageUrl"].forEach(id=>{if($(id))$(id).value="";});tempImageBase64="";
+}
+
+function renderList(){
+  const container=$("signalList");
+  if(!container)return;
+  container.innerHTML=signals.map(s=>`
+    <div class="signal-card">
+      <h3>${esc(s.short)} – ${esc(s.long)}</h3>
+      <p>${esc(s.meaning)}</p>
+      <button type="button" class="primary btn-share" data-id="${esc(s.id)}">Teilen</button>
+      <button type="button" class="danger btn-delete-sig" data-id="${esc(s.id)}">Löschen</button>
+    </div>`).join("");
+}
+
+document.addEventListener("click", e=>{
+  const del=e.target.closest(".btn-delete-sig");
+  const share=e.target.closest(".btn-share");
+  if(del)deleteSignal(del.dataset.id);
+  if(share)shareSignalPrompt(share.dataset.id);
+});
+
+async function shareSignalPrompt(signalId){
+  const signal=signals.find(s=>String(s.id)===String(signalId));
+  const recipient=prompt("E-Mail des Kollegen:");
+  if(!recipient)return;
+  await _supabase.from("shared_signals").insert([{sender_email:currentUser.email, recipient_email:recipient.trim().toLowerCase(), signal_data:signal}]);
+  notify("Signal geteilt!");
+}
+
+async function loadSharedSignals(){
+  try{
+    const {data}=await _supabase.from("shared_signals").select("*").eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending");
+    $("sharedBadge").hidden=!(data||[]).length;
+    $("sharedSignalsList").innerHTML=(data||[]).map(item=>`
+      <div class="signal-card">
+        <p>Von: ${esc(item.sender_email)}</p>
+        <h3>${esc(item.signal_data.short)}</h3>
+        <button type="button" class="good btn-accept-shared" data-id="${esc(item.id)}">Übernehmen</button>
+      </div>`).join("")||"<p class='muted'>Keine.</p>";
+  }catch(err){}
+}
+
+document.addEventListener("click", async e=>{
+  const btn=e.target.closest(".btn-accept-shared");
+  if(btn){
+    const {data}=await _supabase.from("shared_signals").select("*").eq("id",btn.dataset.id).single();
+    await _supabase.from("signals").insert([{...data.signal_data, id:undefined, user_id:currentUser.id}]);
+    await _supabase.from("shared_signals").update({status:"accepted"}).eq("id",btn.dataset.id);
+    loadSharedSignals();
+    loadCloudSignals();
+    notify("Übernommen!");
+  }
+});
+
+/* LERNMODUS & EXAM */
+function getLearnSignals(){return signals;}
+function nextLearn(){
+  const list=getLearnSignals();
+  if(!list.length){$("learnNoImage").textContent="Keine Signale.";return;}
+  current=list[Math.floor(Math.random()*list.length)];
+  $("learnShort").value=""; $("learnLong").value=""; $("learnMeaning").value="";
+  $("learnFeedback").hidden=true; $("nextLearn").hidden=true;
+  $("checkLearn").disabled=false;
+  setImage($("learnImage"),$("learnNoImage"),current.image);
+}
+function checkLearn(){
+  if(!current)return;
+  const ok=($("learnMeaning").value.trim().toLowerCase()===current.meaning.toLowerCase());
+  $("learnFeedback").textContent=ok?"Richtig!":"Falsch!";
+  $("learnFeedback").hidden=false;
+  $("checkLearn").disabled=true; $("nextLearn").hidden=false;
+}
+
+function setImage(img,placeholder,src){
+  if(src){img.src=src; img.hidden=false; placeholder.hidden=true;}
+  else{img.hidden=true; placeholder.hidden=false;}
+}
+
+/* NAVIGATION */
+function showPage(page){
+  ["learn","exam","stats","manage","tutorial","support","inbox","shared","friends","studyGroups","groupDetail","courses","courseDetail"].forEach(id=>{
+    const v=(id===page);
+    const el=$(id);
+    if(el){el.hidden=!v; el.style.display=v?"block":"none";}
+  });
+  document.querySelectorAll("#mainNav button, .sidebar-link").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.page===page);
+  });
+  if(page==="friends")loadFriends();
+  if(page==="studyGroups")loadStudyGroups();
+  if(page==="courses")loadCourses();
+
+  if(page==="inbox")loadUserInbox(true);
+  if(page==="shared")loadSharedSignals();
+  window.scrollTo(0,0);
+}
+
+function initEvents(){
+  $("showRegisterBtn").addEventListener("click",()=>switchAuthView("registerView"));
+  $("showForgotBtn").addEventListener("click",()=>switchAuthView("forgotView"));
+  $("backToLoginFromReg").addEventListener("click",()=>switchAuthView("loginView"));
+  $("backToLoginFromForgot").addEventListener("click",()=>switchAuthView("loginView"));
+
+  $("loginBtn").addEventListener("click",handleLogin);
+  $("registerBtn").addEventListener("click",handleRegister);
+  $("logoutBtn").addEventListener("click",handleLogout);
+
+  $("menuBtn").addEventListener("click",()=>{$("sidebar").classList.add("open");$("sidebarBackdrop").hidden=false;});
+  $("closeSidebar").addEventListener("click",()=>{$("sidebar").classList.remove("open");$("sidebarBackdrop").hidden=true;});
+  $("sidebarBackdrop").addEventListener("click",()=>{$("sidebar").classList.remove("open");$("sidebarBackdrop").hidden=true;});
+
+  $("sidebar").addEventListener("click",e=>{
+    const btn=e.target.closest(".sidebar-link[data-page]");
+    if(btn){$("sidebar").classList.remove("open");$("sidebarBackdrop").hidden=true;showPage(btn.dataset.page);}
+  });
+
+  $("closePopupBtn").addEventListener("click",markBroadcastAsRead);
+  $("sendFriendRequestBtn").addEventListener("click",sendFriendRequest);
+  $("showCreateGroupBtn").addEventListener("click",()=>{$("createGroupForm").hidden=false;});
+  $("cancelCreateGroup").addEventListener("click",()=>{$("createGroupForm").hidden=true;});
+  $("createGroupSubmit").addEventListener("click",createStudyGroup);
+
+  $("createCourseBtn").addEventListener("click",()=>{$("createCourseForm").hidden=false;});
+  $("cancelCreateCourse").addEventListener("click",()=>{$("createCourseForm").hidden=true;});
+  $("submitCreateCourse").addEventListener("click",createCourse);
+
+  $("backToGroups").addEventListener("click",()=>showPage("studyGroups"));
+  $("backToCourses").addEventListener("click",()=>showPage("courses"));
+
+  $("sendSupportBtn").addEventListener("click",sendSupportMessage);
+  $("refreshInboxBtn").addEventListener("click",()=>loadUserInbox(true));
+
+  $("mainNav").addEventListener("click",e=>{
+    const btn=e.target.closest("button[data-page]");
+    if(btn)showPage(btn.dataset.page);
+  });
+
+  $("checkLearn").addEventListener("click",checkLearn);
+  $("nextLearn").addEventListener("click",nextLearn);
+  $("skipLearn").addEventListener("click",nextLearn);
+
+  $("saveSignal").addEventListener("click",saveSignal);
+  $("clearForm").addEventListener("click",clearForm);
+  $("searchSignals").addEventListener("input",renderList);
+
+  // Der Aktualisieren-Button lädt jetzt die Nutzerstatistik
+  $("refreshAdminStats").addEventListener("click",loadAdminStats);
+}
+
+/* Aktivität nach Rückkehr in die App aktualisieren */
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"&&currentUser){
+    updateLastSeen();
+  }
+});
+
+function init(){
+  initEvents();
+  checkSession();
+}
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",init);
+}else{
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
