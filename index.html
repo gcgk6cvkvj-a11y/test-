@@ -2150,8 +2150,68 @@ function installRepair(){
 /* ===== ENDE DER REPARATUR ===== */
 
 
+
+/* PRÜFUNGSMODUS – vollständig im TEST-Frontend */
+let examQuestions=[], examIndex=0, examCorrect=0, examStartedAt=0, examAnswered=false, examClock=null;
+function examStopClock(){if(examClock){clearInterval(examClock);examClock=null;}}
+function examTimeText(){const sec=Math.floor((Date.now()-examStartedAt)/1000);return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");}
+function startExamSession(){
+  const pool=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige"));
+  if(!selectedExamCategories.size)return notify("Bitte mindestens eine Signalgruppe auswählen.");
+  if(!pool.length)return notify("In den gewählten Signalgruppen sind keine Signale vorhanden.");
+  const wanted=Number($("examLength").value)||10;
+  if(pool.length<wanted&&!confirm("Es sind nur "+pool.length+" Signale vorhanden. Prüfung mit "+pool.length+" Fragen starten?"))return;
+  examQuestions=[...pool].sort(()=>Math.random()-.5).slice(0,Math.min(wanted,pool.length));
+  examIndex=0;examCorrect=0;examStartedAt=Date.now();examAnswered=false;
+  $("examConfig").hidden=true;$("examArea").hidden=false;$("examResult").hidden=true;
+  examStopClock();examClock=setInterval(()=>{$("examTimer").textContent=examTimeText();},1000);
+  renderExamQuestion();
+}
+function renderExamQuestion(){
+  if(examIndex>=examQuestions.length)return finishExamSession();
+  const s=examQuestions[examIndex];examAnswered=false;
+  $("examCounter").textContent="Frage "+(examIndex+1)+" von "+examQuestions.length;
+  $("examProgress").style.width=(100*examIndex/examQuestions.length)+"%";
+  $("examTimer").textContent=examTimeText();
+  $("examShort").value="";$("examLong").value="";$("examMeaning").value="";
+  $("examShort").disabled=false;$("examLong").disabled=false;$("examMeaning").disabled=false;
+  $("submitExam").disabled=false;$("submitExam").hidden=false;
+  $("examFeedback").hidden=true;$("examNext").hidden=true;
+  $("examNext").textContent=examIndex===examQuestions.length-1?"Ergebnis anzeigen ➔":"Weiter ➔";
+  setImage($("examImage"),$("examNoImage"),s.image);
+}
+function submitExamAnswer(){
+  if(!examQuestions.length||examAnswered)return;
+  examAnswered=true;
+  const s=examQuestions[examIndex];
+  const norm=v=>String(v||"").trim().toLocaleLowerCase("de-DE").replace(/\s+/g," ");
+  const a=norm($("examShort").value)===norm(s.short);
+  const b=norm($("examLong").value)===norm(s.long);
+  const c=norm($("examMeaning").value)===norm(s.meaning);
+  const correct=a&&b&&c;
+  if(correct){examCorrect++;wrongSignalIds.delete(s.id);}else{wrongSignalIds.add(s.id);}
+  stats.answered++;if(correct)stats.points++;
+  saveLocalProgress();
+  $("examFeedback").hidden=false;
+  $("examFeedback").innerHTML=correct?'<strong class="correct">✓ Vollständig richtig!</strong>':
+    '<strong class="incorrect">Nicht vollständig richtig.</strong><p><b>Kurzbezeichnung:</b> '+esc(s.short)+'</p><p><b>Langbezeichnung:</b> '+esc(s.long)+'</p><p><b>Bedeutung:</b> '+esc(s.meaning)+'</p>';
+  $("examShort").disabled=true;$("examLong").disabled=true;$("examMeaning").disabled=true;
+  $("submitExam").disabled=true;$("submitExam").hidden=true;$("examNext").hidden=false;
+}
+function finishExamSession(){
+  examStopClock();const count=examQuestions.length,percentage=count?Math.round(examCorrect/count*100):0;
+  const result={correct:examCorrect,total:count,percentage,date:new Date().toISOString(),duration:examTimeText()};
+  stats.exams=(Number(stats.exams)||0)+1;stats.lastExam=result;saveLocalProgress();
+  $("examArea").hidden=true;$("examResult").hidden=false;$("examConfig").hidden=false;
+  $("examResult").innerHTML='<h3>Prüfung beendet</h3><p><b>'+examCorrect+' von '+count+' richtig ('+percentage+' %)</b></p><p>Zeit: '+esc(result.duration)+'</p><p>Du kannst oben eine neue Prüfung starten.</p>';
+  $("examProgress").style.width="100%";examQuestions=[];
+}
+
 function init(){
   initEvents();
+  $("startExam").addEventListener("click",startExamSession);
+  $("submitExam").addEventListener("click",submitExamAnswer);
+  $("examNext").addEventListener("click",()=>{examIndex++;renderExamQuestion();});
   installRepair();
   checkSession();
 }
