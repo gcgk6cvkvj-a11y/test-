@@ -509,7 +509,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <p class="muted">Private Nachrichten nur zwischen bestätigten Freunden. Support- und Trainernachrichten bleiben im bisherigen Postfach.</p>
     <label for="chatFriend">Mit welchem Freund schreiben?</label>
     <select id="chatFriend"><option value="">Freund auswählen</option></select>
-    <div id="chatHistory" style="max-height:430px;overflow-y:auto;margin:12px 0;padding:8px;background:#111c29;border-radius:10px" aria-live="polite"><p class="muted">Bitte Freund auswählen.</p></div>
+    <h3>📨 Ungelesene Nachrichten</h3><div id="chatUnreadSenders" class="panel"><p class="muted">Keine ungelesenen Nachrichten.</p></div><div id="chatHistory" style="max-height:430px;overflow-y:auto;margin:12px 0;padding:8px;background:#111c29;border-radius:10px" aria-live="polite"><p class="muted">Bitte Freund auswählen.</p></div>
     <label for="chatText">Deine Nachricht</label>
     <textarea id="chatText" maxlength="4000" placeholder="Nachricht schreiben..."></textarea>
     <button type="button" class="primary" id="sendChat" style="width:100%">Nachricht senden</button>
@@ -594,7 +594,8 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <p class="muted" id="courseDetailTrainer"></p>
 
     <div id="trainerCourseControls" hidden style="margin-bottom:14px;">
-      <button type="button" class="primary" id="courseAddMemberBtn">＋ Schüler hinzufügen</button>
+      <button type="button" class="primary" id="courseAddCoTrainerBtn">＋ Co-Trainer einladen</button>
+       <button type="button" class="primary" id="courseAddMemberBtn">＋ Schüler hinzufügen</button>
       <button type="button" class="primary" id="courseAddMaterialBtn">📄 Aufgabe / Dokument hochladen</button>
       <button type="button" class="primary" id="courseAddHomeworkBtn">📋 Hausaufgabe aufgeben</button>
       <button type="button" class="primary" id="coursePopupBtn">📢 Popup an Kurs senden</button>
@@ -1250,7 +1251,27 @@ async function refreshChatBadge(){
   $("friendChatBadge").hidden=!(count>0);
   $("friendChatBadge").textContent=count||0;
   updateFriendNotificationDot();
+  await loadUnreadFriendSenders();
 }
+async function loadUnreadFriendSenders(){
+  const box=$("chatUnreadSenders");
+  if(!box||!currentUser)return;
+  const {data,error}=await _supabase.from("friend_messages")
+    .select("sender_email,created_at").eq("recipient_email",currentUser.email.toLowerCase())
+    .is("read_at",null).order("created_at",{ascending:false}).limit(500);
+  if(error){box.textContent="Ungelesene Nachrichten konnten nicht geladen werden.";return;}
+  const counts=new Map();
+  for(const m of data||[]){const email=String(m.sender_email).toLowerCase();counts.set(email,(counts.get(email)||0)+1);}
+  box.innerHTML=counts.size?[...counts].map(([email,count])=>
+    `<button type="button" class="btn-unread-friend" data-email="${esc(email)}" style="width:100%;justify-content:space-between;margin-bottom:7px">💬 ${esc(email)} <span class="pill-count" style="position:static">${count} neu</span></button>`).join(""):
+    '<p class="muted">Keine ungelesenen Nachrichten.</p>';
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest(".btn-unread-friend");if(!b)return;
+ await loadFriends();
+ if(!confirmedFriendEmails.includes(b.dataset.email))return notify("Nur bestätigte Freunde können geöffnet werden.");
+ $("chatFriend").value=b.dataset.email;await loadFriendChat();
+});
 async function loadFriendChat(){
   if(!currentUser)return;
   const other=$("chatFriend").value;
@@ -1292,33 +1313,32 @@ async function createStudyGroup(){
   if(!currentUser)return notify("Bitte zuerst anmelden.");
   const name=$("newGroupName").value.trim();
   if(!name)return notify("Bitte Gruppenname eingeben.");
-  const button=$("createGroupSubmit");
-  button.disabled=true;
-  let groupId=null;
+  const button=$("createGroupSubmit");button.disabled=true;
+  let stage="Anmeldung prüfen",groupId=null;
   try{
+    const {data:authData,error:authError}=await _supabase.auth.getUser();
+    if(authError)throw authError;
+    const verifiedEmail=String(authData?.user?.email||"").trim().toLowerCase();
+    if(!verifiedEmail||!authData?.user?.id)throw Error("Keine gültige Sitzung. Bitte neu anmelden.");
+    stage="Lerngruppe in study_groups erstellen";
     const {data,error}=await _supabase.from("study_groups")
-      .insert([{name,creator_email:currentUser.email.toLowerCase()}]).select("id").single();
+      .insert([{name,creator_email:verifiedEmail}]).select("id").single();
     if(error)throw error;
-    if(!data?.id)throw new Error("Die Lerngruppe wurde nicht angelegt.");
+    if(!data?.id)throw Error("Keine Gruppen-ID zurückgegeben.");
     groupId=data.id;
+    stage="Ersteller als Gruppenmitglied eintragen";
     const memberResult=await _supabase.from("study_group_members").insert([{
-      group_id:groupId,user_email:currentUser.email.toLowerCase(),
+      group_id:groupId,user_email:verifiedEmail,
       role:"owner",can_add:true,can_edit:true,can_delete:true
     }]);
     if(memberResult.error)throw memberResult.error;
-    $("newGroupName").value="";
-    $("createGroupForm").hidden=true;
-    await loadStudyGroups();
-    notify("Lerngruppe erfolgreich erstellt!");
+    $("newGroupName").value="";$("createGroupForm").hidden=true;
+    await loadStudyGroups();notify("Lerngruppe erfolgreich erstellt!");
   }catch(err){
-    console.error("Lerngruppe erstellen:",err);
-    // Eine eventuell angelegte, aber unvollständige Gruppe aufräumen.
-    if(groupId){
-      const cleanup=await _supabase.from("study_groups").delete().eq("id",groupId);
-      if(cleanup.error)console.error("Gruppen-Aufräumen:",cleanup.error);
-    }
-    alert("Lerngruppe konnte nicht erstellt werden: "+(err.message||err)+
-      "\n\nFalls 'permission denied' oder 'row-level security' erscheint, müssen die Berechtigungen der TEST-Datenbank überprüft werden.");
+    console.error("Lerngruppe erstellen:",stage,err);
+    if(groupId){const cleanup=await _supabase.from("study_groups").delete().eq("id",groupId);
+      if(cleanup.error)console.warn("Unvollständige Gruppe konnte nicht gelöscht werden",cleanup.error);}
+    alert("Lerngruppe fehlgeschlagen\nSchritt: "+stage+"\nFehlercode: "+(err.code||"unbekannt")+"\nMeldung: "+(err.message||err));
   }finally{button.disabled=false;}
 }
 
@@ -1412,7 +1432,12 @@ async function openCourse(courseId){
     const {data: course}=await _supabase.from("courses").select("*").eq("id",courseId).single();
     $("courseDetailTitle").textContent=course.name;
     $("courseDetailTrainer").textContent="Trainer: "+course.trainer_email;
-    const isTrainer=course.trainer_email.toLowerCase()===currentUser.email.toLowerCase() || currentUser.email.toLowerCase()===ADMIN_EMAIL.toLowerCase();
+    const isOwner=course.trainer_email.toLowerCase()===currentUser.email.toLowerCase() || currentUser.email.toLowerCase()===ADMIN_EMAIL.toLowerCase();
+    const {data:coTrainers,error:coError}=await _supabase.from("course_co_trainers").select("trainer_email").eq("course_id",courseId);
+    if(coError)console.warn("Co-Trainer konnten nicht gelesen werden:",coError);
+    const isTrainer=isOwner||(coTrainers||[]).some(t=>String(t.trainer_email).toLowerCase()===currentUser.email.toLowerCase());
+    window.baCourseOwner=isOwner;
+    $("courseAddCoTrainerBtn").hidden=!isOwner;
     $("trainerCourseControls").hidden=!isTrainer;
     await loadCourseMaterials(courseId, isTrainer);
     await baCourseExtras(courseId, isTrainer);
@@ -1462,17 +1487,48 @@ async function baLoadMembers(){
  const box=$("baMembers");if(!box)return;
  box.innerHTML=(data||[]).map(m=>`<div class="signal-card">${esc(m.user_email)} ${baCourse?.trainer?`<button class="danger btn-remove-member" data-id="${esc(m.id)}">Entfernen</button><button class="btn-open-chat" data-email="${esc(m.user_email)}">💬 Chat</button>`:""}</div>`).join("")||"<p class='muted'>Keine Schüler eingetragen.</p>";
 }
+async function baUploadCourseImage(file,courseId){
+ if(file.size>10*1024*1024)throw Error("Bild darf höchstens 10 MB groß sein.");
+ const clean=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+ const path=`${courseId}/signals/${crypto.randomUUID()}_${clean}`;
+ const {error}=await _supabase.storage.from(BA_BUCKET).upload(path,file,{upsert:false,contentType:file.type});
+ if(error)throw error;return path;
+}
+async function baLoadCoTrainers(courseId){
+ const el=$("baCoTrainers");if(!el)return;
+ const {data,error}=await _supabase.from("course_co_trainers").select("trainer_email").eq("course_id",courseId);
+ el.innerHTML=error?`<p class="muted">${esc(error.message)} – TEST-SQL ausführen.</p>`:
+   (data||[]).map(x=>`<div class="signal-card">${esc(x.trainer_email)}${window.baCourseOwner?` <button class="danger btn-remove-cotrainer" data-email="${esc(x.trainer_email)}">Entfernen</button>`:""}</div>`).join("")||'<p class="muted">Noch keine Co-Trainer eingeladen.</p>';
+}
+async function baLoadTrainerFiles(courseId){
+ const el=$("baTrainerFiles");if(!el)return;
+ const {data,error}=await _supabase.from("course_trainer_files").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ el.innerHTML=error?`<p class="muted">${esc(error.message)} – TEST-SQL ausführen.</p>`:
+ (data||[]).map(x=>`<div class="signal-card"><b>${esc(x.original_filename)}</b><p>${esc(x.sender_email)} → ${esc(x.recipient_email)}</p>${x.message?`<p>${esc(x.message)}</p>`:""}<button class="btn-trainer-file" data-path="${esc(x.storage_path)}">📎 Öffnen</button></div>`).join("")||'<p class="muted">Noch keine Dateien ausgetauscht.</p>';
+}
 async function baCourseExtras(courseId,isTrainer){
 
  baCourse={trainer:isTrainer};const old=$("baExtras");if(old)old.remove();
- const wrap=document.createElement("div");wrap.id="baExtras";wrap.innerHTML=`<div class="panel"><h3>👥 Kursteilnehmer</h3><div id="baMembers"></div></div><div class="panel"><h3>🚦 Kurssignale</h3>${isTrainer?'<button id="baAddSignal" class="primary">＋ Kurssignal</button>':''}<div id="baSignals"></div></div><div class="panel"><h3>📢 Kursmitteilungen</h3><div id="baPopups"></div></div><div class="panel"><h3>💬 Privater Kurschat</h3><div id="baChat"></div></div>`;
+ const wrap=document.createElement("div");wrap.id="baExtras";wrap.innerHTML=`<div class="panel"><h3>👨‍🏫 Kurs-Trainer</h3><div id="baCoTrainers"></div></div><div class="panel"><h3>📎 Trainer-Dateiaustausch</h3><div id="baTrainerFiles"></div>${isTrainer?'<button id="baSendTrainerFile" class="primary">Datei an Trainer senden</button>':''}</div><div class="panel"><h3>👥 Kursteilnehmer</h3><div id="baMembers"></div></div><div class="panel"><h3>🚦 Kurssignale</h3>${isTrainer?'<button id="baAddSignal" class="primary">＋ Kurssignal</button>':''}<div id="baSignals"></div></div><div class="panel"><h3>📢 Kursmitteilungen</h3><div id="baPopups"></div></div><div class="panel"><h3>💬 Privater Kurschat</h3><div id="baChat"></div></div>`;
  $("courseDetail").appendChild(wrap);
  await baLoadMembers();
+ await baLoadCoTrainers(courseId);
+ await baLoadTrainerFiles(courseId);
  const {data:ss,error:se}=await _supabase.from("course_signals").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ if(!se){for(const sig of ss||[]){if(String(sig.image||"").startsWith("course-storage:")){
+   const path=sig.image.slice("course-storage:".length);
+   const {data:urlData}=await _supabase.storage.from(BA_BUCKET).createSignedUrl(path,3600);
+   sig.image=urlData?.signedUrl||"";
+ }}}
  $("baSignals").innerHTML=se?esc(se.message):(ss||[]).map(x=>`<div class="signal-card"><b>${esc(x.short)} – ${esc(x.long)}</b><p>${esc(x.meaning)}</p>${x.image?`<img class="signal-image" src="${esc(x.image)}" alt="Signal">`:""}${isTrainer?`<button class="danger btn-delete-course-signal" data-id="${esc(x.id)}">Löschen</button>`:""}</div>`).join("")||"<p class='muted'>Noch keine Kurssignale.</p>";
  const {data:pp,error:pe}=await _supabase.from("course_popups").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
  $("baPopups").innerHTML=pe?esc(pe.message):(pp||[]).map(x=>`<div class="signal-card"><b>${esc(x.title)}</b><p>${esc(x.message)}</p></div>`).join("")||"<p class='muted'>Keine Mitteilungen.</p>";
- if(isTrainer){$("baChat").textContent="Wähle oben einen Schüler für den privaten Chat.";$("baAddSignal").onclick=()=>baDialog("Kurssignal hinzufügen",baField("short","Kurzbezeichnung")+baField("long","Langbezeichnung")+'<label>Bedeutung<textarea name="meaning" required></textarea></label>'+baField("category","Kategorie","text",false)+baField("image","Bild-URL","url",false),async f=>{const {error}=await _supabase.from("course_signals").insert({course_id:activeCourseId,short:f.get("short"),long:f.get("long"),meaning:f.get("meaning"),category:f.get("category"),image:f.get("image")||null});if(error)throw error;});}
+ if(isTrainer){$("baChat").textContent="Wähle oben einen Schüler für den privaten Chat.";$("baAddSignal").onclick=()=>baDialog("Kurssignal hinzufügen",baField("short","Kurzbezeichnung")+baField("long","Langbezeichnung")+'<label>Bedeutung<textarea name="meaning" required></textarea></label>'+baField("category","Kategorie","text",false)+baField("image","Bild-URL","url",false)+'<label>Bild aus Galerie / Dateien<input name="imagefile" type="file" accept="image/*"></label><label>Kamera<input name="camerafile" type="file" accept="image/*" capture="environment"></label>',async f=>{
+ const file=f.get("imagefile")?.size?f.get("imagefile"):f.get("camerafile")?.size?f.get("camerafile"):null;
+ let image=f.get("image")||null;
+ if(file){if(!file.type.startsWith("image/"))throw Error("Bitte eine Bilddatei auswählen.");
+   const uploaded=await baUploadCourseImage(file,activeCourseId);image="course-storage:"+uploaded;}
+ const {error}=await _supabase.from("course_signals").insert({course_id:activeCourseId,short:f.get("short"),long:f.get("long"),meaning:f.get("meaning"),category:f.get("category"),image});if(error)throw error;});}
  else {const {data:ts,error:te}=await _supabase.from("course_threads").select("*").eq("course_id",courseId).eq("participant_user_id",currentUser.id).maybeSingle();if(te)$("baChat").textContent=te.message;else if(ts)baRenderChat(ts.id);else $("baChat").textContent="Dein Trainer hat noch keinen Chat eröffnet.";}
 }
 async function baRenderChat(threadId){
@@ -1488,6 +1544,25 @@ async function baReview(materialId){
 document.addEventListener("click",async e=>{
  const b=e.target.closest("button");if(!b||!activeCourseId||!$("courseDetail")||$("courseDetail").hidden)return;
  try{
+ if(b.id==="courseAddCoTrainerBtn")baDialog("Freigeschalteten Co-Trainer einladen",baField("email","E-Mail-Adresse des Trainers","email"),async f=>{
+   const {error}=await _supabase.from("course_co_trainers").insert({course_id:activeCourseId,trainer_email:String(f.get("email")).trim().toLowerCase()});if(error)throw error;
+ });
+ if(b.classList.contains("btn-remove-cotrainer")&&window.baCourseOwner&&confirm("Co-Trainer entfernen?")){
+   const {error}=await _supabase.from("course_co_trainers").delete().eq("course_id",activeCourseId).eq("trainer_email",b.dataset.email);if(error)throw error;openCourse(activeCourseId);
+ }
+ if(b.id==="baSendTrainerFile"){
+   const {data:ct,error:ce}=await _supabase.from("course_co_trainers").select("trainer_email").eq("course_id",activeCourseId);if(ce)throw ce;
+   const {data:course}=await _supabase.from("courses").select("trainer_email").eq("id",activeCourseId).single();
+   const recipients=[...new Set([course?.trainer_email,...(ct||[]).map(x=>x.trainer_email)].filter(x=>x&&x.toLowerCase()!==currentUser.email.toLowerCase()))];
+   if(!recipients.length)throw Error("Noch kein anderer Trainer in diesem Kurs.");
+   baDialog("Datei an Co-Trainer senden",'<label>Empfänger<select name="recipient" required>'+recipients.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")+'</select></label><label>Nachricht<textarea name="message"></textarea></label><label>Datei (max. 15 MB)<input type="file" name="file" required></label>',async f=>{
+     const file=f.get("file");if(!file?.size)throw Error("Datei auswählen.");if(file.size>15*1024*1024)throw Error("Datei zu groß.");
+     const path=`${activeCourseId}/trainer-files/${crypto.randomUUID()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
+     const {error:ue}=await _supabase.storage.from(BA_BUCKET).upload(path,file,{upsert:false});if(ue)throw ue;
+     const {error}=await _supabase.from("course_trainer_files").insert({course_id:activeCourseId,sender_email:currentUser.email.toLowerCase(),recipient_email:f.get("recipient"),storage_path:path,original_filename:file.name,message:f.get("message")||null});if(error)throw error;
+   });
+ }
+ if(b.classList.contains("btn-trainer-file")){await baOpenFile({storage_path:b.dataset.path});}
  if(b.id==="courseAddMemberBtn")baDialog("Schüler hinzufügen",baField("email","E-Mail-Adresse","email"),async f=>{const {error}=await _supabase.from("course_members").insert({course_id:activeCourseId,user_email:String(f.get("email")).trim().toLowerCase()});if(error)throw error;});
  if(b.id==="courseAddMaterialBtn"||b.id==="courseAddHomeworkBtn"){
   const homework=b.id==="courseAddHomeworkBtn";
