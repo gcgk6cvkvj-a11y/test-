@@ -1626,6 +1626,189 @@ document.addEventListener("visibilitychange",()=>{
   }
 });
 
+/* ===== REPARATUR: KATEGORIEN, LERNEN, BILDER ===== */
+
+function repairCategories(){
+  const categories=[...new Set([
+    ...BASE_CATEGORIES,
+    ...signals.map(s=>s.category).filter(Boolean)
+  ])];
+
+  const select=$("category");
+  const oldValue=select.value;
+  select.innerHTML=categories.map(c=>
+    `<option value="${esc(c)}">${esc(CATEGORY_LABELS[c]||c)}</option>`
+  ).join("");
+  if(categories.includes(oldValue))select.value=oldValue;
+
+  const selected=[...selectedLearnCategories];
+  const box=$("learnCategoryChoices");
+
+  box.innerHTML=categories.map(c=>`
+    <label class="category-option">
+      <input type="checkbox" value="${esc(c)}"
+        ${selected.includes(c)?"checked":""}>
+      <span>${esc(CATEGORY_LABELS[c]||c)}</span>
+    </label>
+  `).join("");
+
+  $("learnCategorySummary").textContent=
+    selectedLearnCategories.size+" Signalgruppen ausgewählt";
+
+  $("learnAvailable").textContent=getLearnSignals().length;
+}
+
+function getLearnSignals(){
+  return signals.filter(s=>
+    selectedLearnCategories.has(s.category||"Sonstige") &&
+    (!$("onlyWrongFilter").checked || wrongSignalIds.has(s.id))
+  );
+}
+
+function nextLearn(){
+  repairCategories();
+
+  const list=getLearnSignals();
+
+  $("learnShort").value="";
+  $("learnLong").value="";
+  $("learnMeaning").value="";
+  $("learnFeedback").hidden=true;
+  $("nextLearn").hidden=true;
+  $("checkLearn").disabled=false;
+
+  if(!list.length){
+    current=null;
+    $("learnImage").hidden=true;
+    $("learnNoImage").hidden=false;
+    $("learnNoImage").textContent=
+      "Keine Signale für diese Auswahl vorhanden.";
+    $("checkLearn").disabled=true;
+    return;
+  }
+
+  current=list[Math.floor(Math.random()*list.length)];
+  learnNumber++;
+
+  $("learnCounter").textContent="Frage "+learnNumber;
+  $("learnAvailable").textContent=list.length;
+
+  $("learnNoImage").textContent=
+    "Kein Bild hinterlegt – Signal anhand der Angaben üben.";
+
+  setImage($("learnImage"),$("learnNoImage"),current.image);
+}
+
+function checkLearn(){
+  if(!current)return;
+
+  const normalize=v=>String(v||"").trim()
+    .toLocaleLowerCase("de-DE")
+    .replace(/\s+/g," ");
+
+  const shortOK=normalize($("learnShort").value)===
+    normalize(current.short);
+  const longOK=normalize($("learnLong").value)===
+    normalize(current.long);
+  const meaningOK=normalize($("learnMeaning").value)===
+    normalize(current.meaning);
+
+  const correct=shortOK&&longOK&&meaningOK;
+
+  stats.answered++;
+  if(correct){
+    stats.points++;
+    wrongSignalIds.delete(current.id);
+  }else{
+    wrongSignalIds.add(current.id);
+  }
+  saveLocalProgress();
+
+  const feedback=$("learnFeedback");
+  feedback.hidden=false;
+  feedback.innerHTML=correct
+    ?'<strong class="correct">✓ Alles richtig!</strong>'
+    :`<strong class="incorrect">Nicht vollständig richtig.</strong>
+      <p><b>Kurzbezeichnung:</b> ${esc(current.short)}</p>
+      <p><b>Langbezeichnung:</b> ${esc(current.long)}</p>
+      <p><b>Bedeutung:</b> ${esc(current.meaning)}</p>`;
+
+  $("checkLearn").disabled=true;
+  $("nextLearn").hidden=false;
+}
+
+function repairImageInput(file){
+  if(!file)return;
+  if(!file.type.startsWith("image/")){
+    notify("Bitte eine Bilddatei auswählen.");
+    return;
+  }
+  if(file.size>2*1024*1024){
+    notify("Bild zu groß. Bitte ein Bild unter 2 MB wählen.");
+    return;
+  }
+
+  const reader=new FileReader();
+  reader.onload=()=>{
+    tempImageBase64=reader.result;
+    notify("Bild ausgewählt. Jetzt Signal speichern.");
+  };
+  reader.onerror=()=>notify("Bild konnte nicht gelesen werden.");
+  reader.readAsDataURL(file);
+}
+
+function installRepair(){
+  repairCategories();
+
+  $("pickGallery").addEventListener("click",()=>
+    $("imageFile").click()
+  );
+
+  $("pickCamera").addEventListener("click",()=>
+    $("cameraFile").click()
+  );
+
+  $("imageFile").addEventListener("change",e=>
+    repairImageInput(e.target.files[0])
+  );
+
+  $("cameraFile").addEventListener("change",e=>
+    repairImageInput(e.target.files[0])
+  );
+
+  $("learnCategoryChoices").addEventListener("change",e=>{
+    if(e.target.type!=="checkbox")return;
+    if(e.target.checked)
+      selectedLearnCategories.add(e.target.value);
+    else
+      selectedLearnCategories.delete(e.target.value);
+    nextLearn();
+  });
+
+  $("learnSelectAll").addEventListener("click",()=>{
+    selectedLearnCategories=new Set([
+      ...BASE_CATEGORIES,
+      ...signals.map(s=>s.category).filter(Boolean)
+    ]);
+    nextLearn();
+  });
+
+  $("learnToggleCategories").addEventListener("click",()=>{
+    const box=$("learnCategoryChoices");
+    box.classList.toggle("collapsed");
+  });
+
+  $("onlyWrongFilter").addEventListener("change",nextLearn);
+
+  const observer=new MutationObserver(()=>{
+    repairCategories();
+  });
+
+  observer.observe($("signalList"),{childList:true});
+}
+
+/* ===== ENDE DER REPARATUR ===== */
+
 function init(){
   initEvents();
   checkSession();
