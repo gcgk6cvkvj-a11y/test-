@@ -1372,30 +1372,153 @@ document.addEventListener("click", e=>{
   }
 });
 
+let groupContext=null;
+let groupSignalRows=[];
+function groupError(err){
+  console.error("Lerngruppe:",err);
+  alert("Lerngruppe: "+(err.message||err)+(err.code?"\nFehlercode: "+err.code:""));
+}
 async function openStudyGroup(groupId){
+  activeGroupId=groupId;groupContext=null;
   showPage("groupDetail");
-
+  $("groupDetailTitle").textContent="Lerngruppe wird geladen …";
+  $("groupDetailCreator").textContent="";
+  ["groupInviteBtn","groupManageMembersBtn","groupLearnBtn","groupAddSignalBtn"].forEach(id=>$(id).disabled=true);
+  $("groupAddSignalBtn").hidden=true;
   try{
-    const {data: group}=await _supabase.from("study_groups").select("*").eq("id",groupId).single();
+    const {data:group,error}=await _supabase.from("study_groups").select("*").eq("id",groupId).single();
+    if(error)throw error;
+    const {data:members,error:memberError}=await _supabase.from("study_group_members").select("*").eq("group_id",groupId);
+    if(memberError)throw memberError;
+    if(activeGroupId!==groupId)return;
+    const email=currentUser.email.toLowerCase();
+    const member=(members||[]).find(m=>String(m.user_email).toLowerCase()===email);
+    const owner=String(group.creator_email).toLowerCase()===email;
+    groupContext={id:groupId,group,members:members||[],member,owner};
     $("groupDetailTitle").textContent=group.name;
     $("groupDetailCreator").textContent="Erstellt von: "+group.creator_email;
-    loadGroupSignals(groupId);
-  }catch(err){}
+    $("groupInviteBtn").disabled=!owner;
+    $("groupManageMembersBtn").disabled=false;
+    $("groupLearnBtn").disabled=false;
+    $("groupAddSignalBtn").hidden=!(owner||member?.can_add);
+    $("groupAddSignalBtn").disabled=!(owner||member?.can_add);
+    await loadGroupSignals(groupId);
+  }catch(err){$("groupDetailTitle").textContent="Gruppe konnte nicht geladen werden";groupError(err);}
 }
-
+async function fetchGroupSignals(groupId){
+  const {data,error}=await _supabase.from("study_group_signals").select("*").eq("group_id",groupId);
+  if(error)throw error;
+  return data||[];
+}
 async function loadGroupSignals(groupId){
   const container=$("groupSignalsList");
   try{
-    const {data}=await _supabase.from("study_group_signals").select("*").eq("group_id",groupId);
-    $("groupSignalCount").textContent=(data||[]).length;
-    if(!data||!data.length){container.innerHTML="<p class='muted'>Keine Signale in der Gruppe.</p>";return;}
-    container.innerHTML=data.map(s=>`
-      <div class="signal-card">
-        <h3>${esc(s.short)} – ${esc(s.long)}</h3>
-        <p>${esc(s.meaning)}</p>
-      </div>`).join("");
-  }catch(err){}
+    const data=await fetchGroupSignals(groupId);
+    if(activeGroupId!==groupId)return;
+    groupSignalRows=data;
+    $("groupSignalCount").textContent=data.length;
+    container.innerHTML=data.map(s=>`<div class="signal-card"><h3>${esc(s.short)} – ${esc(s.long)}</h3><p style="white-space:pre-wrap">${esc(s.meaning)}</p><div class="actions">${groupContext?.owner||groupContext?.member?.can_edit?`<button type="button" data-group-edit="${esc(s.id)}">Bearbeiten</button>`:''}${groupContext?.owner||groupContext?.member?.can_delete?`<button type="button" class="danger" data-group-delete="${esc(s.id)}">Löschen</button>`:''}</div></div>`).join("")||"<p class='muted'>Keine Signale in der Gruppe.</p>";
+  }catch(err){container.textContent="Signale konnten nicht geladen werden: "+err.message;throw err;}
 }
+function groupDialog(title,fields,submit){
+  const old=$("groupModal");if(old)old.remove();
+  const outer=document.createElement("div");outer.id="groupModal";
+  outer.style="position:fixed;inset:0;z-index:5000;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px";
+  outer.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-labelledby="groupModalTitle" style="width:100%;max-width:640px;max-height:90vh;overflow:auto"><h2 id="groupModalTitle">${esc(title)}</h2><form id="groupModalForm">${fields}<div class="actions">${submit?'<button class="primary" type="submit">Speichern</button>':''}<button type="button" id="groupModalClose">Schließen</button></div></form></div>`;
+  document.body.appendChild(outer);
+  const close=()=>{document.removeEventListener("keydown",onKey);outer.remove();};
+  const onKey=e=>{if(e.key==="Escape")close();};
+  document.addEventListener("keydown",onKey);$("groupModalClose").onclick=close;
+  $("groupModalForm").onsubmit=async e=>{
+    e.preventDefault();if(!submit)return;
+    const button=e.submitter;button.disabled=true;
+    try{await submit(new FormData(e.currentTarget));close();notify("Gespeichert.");}
+    catch(err){groupError(err);}finally{button.disabled=false;}
+  };
+  $("groupModalClose").focus();
+}
+async function inviteGroupMember(){
+  const ctx=groupContext;if(!ctx?.owner)return notify("Nur der Ersteller kann Mitglieder hinzufügen.");
+  groupDialog("Mitglied einladen",'<p>Die Person erhält direkt Gruppenzugang über ihre registrierte E-Mail-Adresse. Es wird keine E-Mail versendet.</p>'+baField("email","E-Mail-Adresse","email"),async form=>{
+    const email=String(form.get("email")||"").trim().toLowerCase();
+    if(!email)throw Error("Bitte E-Mail-Adresse eingeben.");
+    if(ctx.members.some(m=>String(m.user_email).toLowerCase()===email))throw Error("Diese Person ist bereits Mitglied.");
+    const {error}=await _supabase.from("study_group_members").insert([{group_id:ctx.id,user_email:email,role:"member",can_add:false,can_edit:false,can_delete:false}]);
+    if(error)throw error;
+    await openStudyGroup(ctx.id);
+  });
+}
+function manageGroupMembers(){
+  const ctx=groupContext;if(!ctx)return;
+  const editable=ctx.members.filter(m=>String(m.user_email).toLowerCase()!==String(ctx.group.creator_email).toLowerCase()&&m.role!=="owner");
+  const fields=ctx.members.map(m=>{
+    const i=editable.indexOf(m),locked=!ctx.owner||i<0;
+    return `<div class="signal-card"><h3>${esc(m.user_email)}</h3><p>${i<0?'Ersteller / Eigentümer':'Mitglied'}</p>${["add","edit","delete"].map((key,k)=>`<label><input type="checkbox" name="${i}_${key}" ${m['can_'+key]?'checked':''} ${locked?'disabled':''}> ${['Signale hinzufügen','Signale bearbeiten','Signale löschen'][k]}</label>`).join('')}</div>`;
+  }).join('');
+  groupDialog("Mitglieder & Rechte",fields,ctx.owner?async form=>{
+    for(let i=0;i<editable.length;i++){
+      const m=editable[i],permissions={can_add:form.has(i+"_add"),can_edit:form.has(i+"_edit"),can_delete:form.has(i+"_delete")};
+      if(Object.keys(permissions).every(key=>Boolean(m[key])===permissions[key]))continue;
+      const {error}=await _supabase.from("study_group_members").update(permissions).eq("group_id",ctx.id).eq("user_email",m.user_email);
+      if(error)throw error;
+    }
+    await openStudyGroup(ctx.id);
+  }:null);
+}
+function addGroupSignals(){
+  const ctx=groupContext;if(!ctx||!(ctx.owner||ctx.member?.can_add))return notify("Keine Berechtigung zum Hinzufügen.");
+  const available=signals.slice();
+  if(!available.length)return notify("Lege zuerst unter Signalverwaltung eigene Signale an.");
+  groupDialog("Signale zur Gruppe hinzufügen",'<p>Wähle eigene Signale aus. Ihre Texte werden in die Gruppe kopiert.</p>'+available.map((s,i)=>`<label><input type="checkbox" name="signal" value="${i}"> ${esc(s.short)} – ${esc(s.long)}</label>`).join(''),async form=>{
+    const selected=form.getAll("signal").map(i=>available[Number(i)]).filter(Boolean);
+    if(!selected.length)throw Error("Bitte mindestens ein Signal auswählen.");
+    const existing=await fetchGroupSignals(ctx.id);
+    const same=(a,b)=>a.short===b.short&&a.long===b.long&&a.meaning===b.meaning;
+    const rows=[];
+    for(const s of selected)if(!existing.some(e=>same(e,s))&&!rows.some(e=>same(e,s)))rows.push({group_id:ctx.id,short:s.short,long:s.long,meaning:s.meaning});
+    if(!rows.length)throw Error("Diese Signale sind bereits in der Gruppe.");
+    const {error}=await _supabase.from("study_group_signals").insert(rows);if(error)throw error;
+    await loadGroupSignals(ctx.id);
+  });
+}
+async function learnGroup(){
+  const ctx=groupContext;if(!ctx)return;
+  const data=await fetchGroupSignals(ctx.id);
+  if(!data.length)return notify("Füge zuerst Signale zur Gruppe hinzu.");
+  let index=0;
+  groupDialog("Gruppe lernen",'<p id="groupLearnProgress"></p><h3 id="groupLearnShort"></h3><p>Wie lauten Langname und Bedeutung?</p><div id="groupLearnAnswer" hidden style="white-space:pre-wrap"></div><div class="actions"><button type="button" id="groupReveal">Antwort anzeigen</button><button type="button" id="groupNext">Nächstes Signal</button></div>',null);
+  const render=()=>{
+    const s=data[index];$("groupLearnProgress").textContent=(index+1)+" / "+data.length;
+    $("groupLearnShort").textContent=s.short;$("groupLearnAnswer").textContent=s.long+"\n\n"+s.meaning;$("groupLearnAnswer").hidden=true;
+  };
+  $("groupReveal").onclick=()=>$("groupLearnAnswer").hidden=false;
+  $("groupNext").onclick=()=>{index=(index+1)%data.length;render();};render();
+}
+async function changeGroupSignal(button){
+  const ctx=groupContext;if(!ctx)return;
+  const deleting=button.hasAttribute("data-group-delete");
+  if(!(ctx.owner||ctx.member?.[deleting?"can_delete":"can_edit"]))throw Error("Keine Berechtigung.");
+  const id=button.getAttribute(deleting?"data-group-delete":"data-group-edit");
+  const row=groupSignalRows.find(s=>String(s.id)===id);if(!row)throw Error("Signal nicht gefunden. Bitte Gruppe neu öffnen.");
+  groupDialog(deleting?"Signal aus Gruppe löschen":"Gruppensignal bearbeiten",deleting?`<p>„${esc(row.short)}“ aus dieser Gruppe löschen? Dein eigenes Signal bleibt erhalten.</p>`:`<label>Kurzname<input name="short" value="${esc(row.short)}" required></label><label>Langname<input name="long" value="${esc(row.long)}" required></label><label>Bedeutung<textarea name="meaning" required>${esc(row.meaning)}</textarea></label>`,async form=>{
+    let query;
+    if(deleting)query=_supabase.from("study_group_signals").delete();
+    else{
+      const payload=Object.fromEntries(["short","long","meaning"].map(k=>[k,String(form.get(k)||"").trim()]));
+      if(Object.values(payload).some(v=>!v))throw Error("Bitte alle Textfelder ausfüllen.");
+      query=_supabase.from("study_group_signals").update(payload);
+    }
+    const {error}=await query.eq("group_id",ctx.id).eq("id",row.id);if(error)throw error;
+    await loadGroupSignals(ctx.id);
+  });
+}
+document.addEventListener("click",async e=>{
+  const button=e.target.closest("button");if(!button||button.disabled)return;
+  const action=button.matches("[data-group-edit],[data-group-delete]")?()=>changeGroupSignal(button):{groupInviteBtn:inviteGroupMember,groupManageMembersBtn:manageGroupMembers,groupLearnBtn:learnGroup,groupAddSignalBtn:addGroupSignals}[button.id];
+  if(!action)return;
+  button.disabled=true;
+  try{await action();}catch(err){groupError(err);}finally{button.disabled=false;}
+});
 
 /* KURSE */
 async function createCourse(){
