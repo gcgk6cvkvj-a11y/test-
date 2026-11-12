@@ -5,7 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#101722">
-<title>Signale lernen ByArmando</title>
+<title>GleisCampus.de – Signale lernen</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -274,7 +274,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 <div id="sidebarBackdrop" hidden></div>
 <aside id="sidebar" aria-label="Seitenmenü">
   <div class="sidebar-header">
-    <strong>Menü</strong>
+    <strong>GleisCampus.de</strong>
     <button type="button" id="closeSidebar" style="padding:6px 10px;">✕</button>
   </div>
   <button type="button" class="sidebar-link" data-page="tutorial">📖 Tutorial</button>
@@ -301,8 +301,9 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
       ☰ <span id="menuBadgeDot" class="badge-dot" hidden></span>
     </button>
     <div>
-      <h1>🚦 Signale lernen <span class="brand">ByArmando</span></h1>
-      <p class="muted" style="margin:0;font-size:13px;">Signale erkennen · Bedeutungen lernen · Prüfung bestehen</p>
+      <h1><span aria-hidden="true">🚦</span> <span class="brand">GleisCampus.de</span></h1>
+      <small style="display:block;margin-bottom:4px;">by Armando</small>
+      <p class="muted" style="margin:0;font-size:13px;">Signale lernen · Gemeinsam üben · Prüfung bestehen</p>
     </div>
   </div>
   <button id="logoutBtn" class="danger" style="display:none;padding:6px 12px;font-size:12px;">Abmelden</button>
@@ -2097,7 +2098,7 @@ function exportSignalData(){
     const url=URL.createObjectURL(blob);
     const link=document.createElement("a");
     link.href=url;
-    link.download="ByArmando_Signale_Backup_"+new Date().toISOString().slice(0,10)+".json";
+    link.download="GleisCampus_Signale_Backup_"+new Date().toISOString().slice(0,10)+".json";
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -2152,7 +2153,7 @@ async function importSignalData(file){
     let parsed;
     try{parsed=JSON.parse(text);}catch(_){throw new Error("Die Datei enthält kein gültiges JSON.");}
     const rows=Array.isArray(parsed)?parsed:parsed?.signals;
-    if(!Array.isArray(rows))throw new Error("Keine Signalliste gefunden. Bitte eine ByArmando-JSON-Sicherung auswählen.");
+    if(!Array.isArray(rows))throw new Error("Keine Signalliste gefunden. Bitte eine GleisCampus-JSON-Sicherung auswählen (bisherige ByArmando-Sicherungen funktionieren ebenfalls).");
     if(rows.length>5000)throw new Error("Zu viele Signale in einer Datei (maximal 5000).");
     const clean=rows.map((s,i)=>{
       if(!s||typeof s!=="object")throw new Error("Ungültiges Signal an Position "+(i+1));
