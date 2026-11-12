@@ -1951,17 +1951,44 @@ function shareSignalPrompt(signalId){
 
 async function loadSharedSignals(){
   try{
-    const {data}=await _supabase.from("shared_signals").select("*").eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending");
+    const {data,error}=await _supabase.from("shared_signals").select("*").eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending");
+    if(error)throw error;
     $("sharedBadge").hidden=!(data||[]).length;
     updateFriendNotificationDot();
     $("sharedSignalsList").innerHTML=(data||[]).map(item=>`
       <div class="signal-card">
         <p>Von: ${esc(item.sender_email)}</p>
         <h3>${esc(item.signal_data.short)}</h3>
-        <button type="button" class="good btn-accept-shared" data-id="${esc(item.id)}">Übernehmen</button>
+        <div class="actions">
+          <button type="button" class="good btn-accept-shared" data-id="${esc(item.id)}">Übernehmen</button>
+          <button type="button" class="danger btn-remove-shared" data-id="${esc(item.id)}">Entfernen</button>
+        </div>
       </div>`).join("")||"<p class='muted'>Keine.</p>";
-  }catch(err){}
+  }catch(err){
+    $("sharedSignalsList").textContent="Geteilte Signale konnten nicht geladen werden: "+err.message;
+  }
 }
+
+document.addEventListener("click",async e=>{
+  const btn=e.target.closest(".btn-remove-shared");
+  if(!btn||btn.disabled||!currentUser)return;
+  const card=btn.closest(".signal-card");
+  const buttons=card?Array.from(card.querySelectorAll("button")):[btn];
+  buttons.forEach(b=>b.disabled=true);
+  try{
+    // Nur die empfangene Freigabe entfernen, nicht das Originalsignal.
+    const {data,error}=await _supabase.from("shared_signals").delete()
+      .eq("id",btn.dataset.id)
+      .eq("recipient_email",currentUser.email.toLowerCase())
+      .eq("status","pending").select("id");
+    if(error)throw error;
+    if(!data?.length)throw Error("Die Freigabe konnte nicht entfernt werden. Sie ist nicht mehr vorhanden oder die Löschberechtigung fehlt.");
+    await loadSharedSignals();
+    notify("Geteiltes Signal entfernt.");
+  }catch(err){
+    alert("Entfernen fehlgeschlagen: "+(err.message||err)+(err.code?"\nFehlercode: "+err.code:""));
+  }finally{buttons.forEach(b=>b.disabled=false);}
+});
 
 document.addEventListener("click", async e=>{
   const btn=e.target.closest(".btn-accept-shared");
