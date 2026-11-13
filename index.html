@@ -198,6 +198,24 @@ label {display:block;color:var(--muted);font-size:13px;font-weight:500}
 .ticket-compact .ticket-summary-main {min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .ticket-compact .ticket-summary-email {font-size:12px;color:var(--muted);overflow-wrap:anywhere}
 .ticket-compact .ticket-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.admin-ticket-section {padding:0!important;margin:10px 0!important;overflow:hidden}
+.admin-ticket-section>summary {cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px;padding:12px 14px;font-weight:800}
+.admin-ticket-section>summary::-webkit-details-marker {display:none}
+.admin-ticket-section>summary:after {content:"＋";margin-left:auto;color:var(--accent);font-weight:900}
+.admin-ticket-section[open]>summary:after {content:"−"}
+.admin-ticket-section-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.ticket-count {font-size:11px;line-height:1;padding:4px 7px;border-radius:99px;background:var(--panel2);color:var(--accent)}
+.admin-ticket-card {margin:8px 0!important;padding:0!important;overflow:hidden}
+.admin-ticket-card>summary {cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px}
+.admin-ticket-card>summary::-webkit-details-marker {display:none}
+.admin-ticket-card>summary:after {content:"＋";margin-left:auto;color:var(--accent);font-weight:900}
+.admin-ticket-card[open]>summary:after {content:"−"}
+.admin-ticket-card .admin-ticket-preview {font-size:12px;color:var(--muted);min-width:0;flex:1 1 100%;overflow-wrap:anywhere}
+.admin-ticket-card .ticket-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.admin-ticket-category {margin:8px 0!important;padding:0!important;overflow:hidden}
+.admin-ticket-category>summary {cursor:pointer;padding:9px 11px;font-weight:700;list-style:none}
+.admin-ticket-category>summary::-webkit-details-marker {display:none}
+
 .support-ticket {padding:10px;margin:8px 0}
 .support-ticket .support-thread {margin-top:6px!important}
 .support-ticket .admin-reply-box {padding:8px 10px;margin:6px 0!important}
@@ -769,15 +787,19 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <h2>📨 Support & Ticket-Postfach</h2>
     <div class="ticket-search-wrap"><span aria-hidden="true">🔎</span><input type="search" id="adminTicketSearch" placeholder="Tickets suchen: E-Mail, Anliegen, Nachricht oder ID …" autocomplete="off"></div>
     <p class="muted ticket-search-hint">Die Suche filtert offene, beantwortete und geschlossene Tickets.</p>
-    <h3>📥 Offene Anfragen</h3>
-    <div id="adminSupportList"><p class="muted">Lade Anfragen...</p></div>
-    <hr>
-    <h3>📁 Beantwortete Tickets – Postfach</h3>
-    <p class="muted">Nach Anliegen sortiert. Nutzer können hierauf weiter antworten, bis du das Ticket schließt.</p>
-    <div id="adminAnsweredFolders"><p class="muted">Lade Postfach...</p></div>
-    <hr>
-    <h3>🔒 Geschlossene Tickets</h3>
-    <div id="adminClosedTickets"><p class="muted">Lade Tickets...</p></div>
+    <details class="panel admin-ticket-section" id="adminOpenSection">
+      <summary>📥 Offene Anfragen <span class="ticket-count" id="adminOpenCount">0</span></summary>
+      <div class="admin-ticket-section-content" id="adminSupportList"><p class="muted">Lade Anfragen...</p></div>
+    </details>
+    <details class="panel admin-ticket-section" id="adminAnsweredSection">
+      <summary>📁 Beantwortete Tickets – Postfach <span class="ticket-count" id="adminAnsweredCount">0</span></summary>
+      <p class="muted">Nach Anliegen sortiert. Nutzer können hierauf weiter antworten, bis du das Ticket schließt.</p>
+      <div class="admin-ticket-section-content" id="adminAnsweredFolders"><p class="muted">Lade Postfach...</p></div>
+    </details>
+    <details class="panel admin-ticket-section" id="adminClosedSection">
+      <summary>🔒 Geschlossene Tickets <span class="ticket-count" id="adminClosedCount">0</span></summary>
+      <div class="admin-ticket-section-content" id="adminClosedTickets"><p class="muted">Lade Tickets...</p></div>
+    </details>
   </div>
 
   <div class="panel">
@@ -1851,6 +1873,15 @@ async function loadUserInbox(markAsRead=false){
     }).join(""):'<p class="muted">Du hast noch keine Support-Anfragen.</p>';
   }catch(err){container.innerHTML=`<p class="muted">Postfach konnte nicht geladen werden: ${esc(err.message)}</p>`;}
 }
+function adminTicketCardHtml(ticket,replies){
+  const list=replies.filter(r=>r.ticket_id===ticket.id);
+  const last=list.length?list[list.length-1].message:(ticket.admin_reply||ticket.message||"");
+  const preview=String(last).replace(/\s+/g," ").slice(0,110);
+  const date=ticket.created_at?new Date(ticket.created_at).toLocaleDateString("de-DE"):"";
+  const status=ticket.status||(ticket.admin_reply?"answered":"open");
+  const statusLabel=status==="closed"?"🔒 Geschlossen":status==="answered"?"📨 Beantwortet":"🟡 Offen";
+  return `<details class="panel admin-ticket-card"><summary><span class="ticket-tag">${esc(SUPPORT_CATEGORIES[ticket.category]||ticket.category||"Sonstige")}</span><span class="ticket-tag">${statusLabel}</span><strong>${esc(ticket.user_email||"Unbekannter Nutzer")}</strong><span class="admin-ticket-preview">${esc(date)} · ${esc(preview)}${String(last).length>110?"…":""}</span></summary><div class="ticket-content">${supportThreadHtml(ticket,list,true)}</div></details>`;
+}
 async function loadAdminSupport(){
   const container=$("adminSupportList");if(!container)return;
   try{
@@ -1864,17 +1895,20 @@ async function loadAdminSupport(){
       return [t.id,t.user_email,t.category,t.message,t.admin_reply,thread].filter(Boolean).join(" ").toLocaleLowerCase("de-DE").includes(query);
     };
     const filtered=tickets.filter(matches);
-    const renderList=(list)=>list.length?list.map(t=>supportThreadHtml(t,replies.filter(r=>r.ticket_id===t.id),true)).join(""):'<p class="muted">Keine passenden Tickets gefunden.</p>';
+    const renderList=(list)=>list.length?list.map(t=>adminTicketCardHtml(t,replies)).join(""):'<p class="muted">Keine passenden Tickets gefunden.</p>';
     const open=filtered.filter(t=>status(t)==="open");
     container.innerHTML=renderList(open);
     const answered=filtered.filter(t=>status(t)==="answered");
     const folder=$("adminAnsweredFolders");
     folder.innerHTML=answered.length?Object.keys(SUPPORT_CATEGORIES).map(cat=>{
       const list=answered.filter(t=>t.category===cat);if(!list.length)return "";
-      return `<details class="panel" style="margin:8px 0;padding:8px 10px"><summary style="cursor:pointer;font-weight:700;padding:4px">📁 ${esc(SUPPORT_CATEGORIES[cat])} <span class="ticket-tag">${list.length}</span></summary>${list.map(t=>supportThreadHtml(t,replies.filter(r=>r.ticket_id===t.id),true)).join("")}</details>`;
+      return `<details class="panel admin-ticket-category"><summary>📂 ${esc(SUPPORT_CATEGORIES[cat])} <span class="ticket-count">${list.length}</span></summary><div class="admin-ticket-section-content">${renderList(list)}</div></details>`;
     }).join(""):'<p class="muted">Keine passenden beantworteten Tickets im Postfach.</p>';
     const closed=filtered.filter(t=>status(t)==="closed");
     $("adminClosedTickets").innerHTML=renderList(closed);
+    $("adminOpenCount").textContent=open.length;
+    $("adminAnsweredCount").textContent=answered.length;
+    $("adminClosedCount").textContent=closed.length;
   }catch(err){container.innerHTML=`<p class="muted">Support konnte nicht geladen werden: ${esc(err.message)}</p>`;}
 }
 
