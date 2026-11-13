@@ -243,6 +243,28 @@ label {display:block;color:var(--muted);font-size:13px;font-weight:500}
 .category-summary {
   color:var(--accent);font-size:13px;font-weight:700;margin-top:10px;
 }
+.rule-filter {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:10px;margin:10px 0 12px;overflow:hidden;
+}
+.rule-filter summary {
+  list-style:none;cursor:pointer;padding:11px 12px;
+  color:var(--text);font-size:13px;font-weight:700;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.rule-filter summary::-webkit-details-marker {display:none}
+.rule-filter summary::after {content:"＋";color:var(--accent);font-size:17px;line-height:1}
+.rule-filter[open] summary::after {content:"−"}
+.rule-filter-content {padding:0 12px 10px}
+.rule-filter-content label {
+  display:flex;align-items:center;gap:9px;color:var(--text);
+  margin:7px 0;font-size:14px;
+}
+.rule-filter-content input[type="checkbox"] {
+  width:19px;height:19px;margin:0;accent-color:var(--accent);flex-shrink:0;
+}
+.rule-filter-content small {display:block;margin-top:8px}
+
 
 .category-toggle {
   width:100%;margin-top:10px;padding:10px;font-size:13px;
@@ -374,16 +396,14 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
       </div>
       <div id="learnCategoryChoices" class="category-grid collapsed"></div>
       <div id="learnCategorySummary" class="category-summary"></div>
-      <div class="filter-box" style="display:block;margin-top:10px;">
-        <strong style="display:block;margin-bottom:8px;">Regelwerk filtern (optional)</strong>
-        <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:6px 0;">
-          <input type="checkbox" id="learnDs301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);"> DS301
-        </label>
-        <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:6px 0;">
-          <input type="checkbox" id="learnDv301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);"> DV301
-        </label>
-        <small>Ohne Auswahl werden Signale aus allen Regelwerken berücksichtigt.</small>
-      </div>
+      <details class="rule-filter">
+        <summary>Regelwerk filtern (optional)</summary>
+        <div class="rule-filter-content">
+          <label><input type="checkbox" id="learnDs301"> DS301</label>
+          <label><input type="checkbox" id="learnDv301"> DV301</label>
+          <small>Ohne Auswahl werden Signale aus allen Regelwerken berücksichtigt.</small>
+        </div>
+      </details>
       <button type="button" class="category-toggle" id="learnToggleCategories">
         Signalgruppen auswählen ▼
       </button>
@@ -439,16 +459,14 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
         </div>
         <div id="examCategoryChoices" class="category-grid collapsed"></div>
         <div id="examCategorySummary" class="category-summary"></div>
-        <div class="filter-box" style="display:block;margin-top:10px;">
-          <strong style="display:block;margin-bottom:8px;">Regelwerk filtern (optional)</strong>
-          <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:6px 0;">
-            <input type="checkbox" id="examDs301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);"> DS301
-          </label>
-          <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:6px 0;">
-            <input type="checkbox" id="examDv301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);"> DV301
-          </label>
+        <details class="rule-filter">
+        <summary>Regelwerk filtern (optional)</summary>
+        <div class="rule-filter-content">
+          <label><input type="checkbox" id="examDs301"> DS301</label>
+          <label><input type="checkbox" id="examDv301"> DV301</label>
           <small>Ohne Auswahl werden Signale aus allen Regelwerken berücksichtigt.</small>
         </div>
+      </details>
         <button type="button" class="category-toggle" id="examToggleCategories">
           Signalgruppen auswählen ▼
         </button>
