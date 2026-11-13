@@ -374,6 +374,16 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
       </div>
       <div id="learnCategoryChoices" class="category-grid collapsed"></div>
       <div id="learnCategorySummary" class="category-summary"></div>
+      <div class="filter-box" style="display:block;margin-top:10px;">
+        <strong style="display:block;margin-bottom:8px;">Regelwerk filtern (optional)</strong>
+        <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:6px 0;">
+          <input type="checkbox" id="learnDs301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);"> DS301
+        </label>
+        <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:6px 0;">
+          <input type="checkbox" id="learnDv301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);"> DV301
+        </label>
+        <small>Ohne Auswahl werden Signale aus allen Regelwerken berücksichtigt.</small>
+      </div>
       <button type="button" class="category-toggle" id="learnToggleCategories">
         Signalgruppen auswählen ▼
       </button>
@@ -429,6 +439,16 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
         </div>
         <div id="examCategoryChoices" class="category-grid collapsed"></div>
         <div id="examCategorySummary" class="category-summary"></div>
+        <div class="filter-box" style="display:block;margin-top:10px;">
+          <strong style="display:block;margin-bottom:8px;">Regelwerk filtern (optional)</strong>
+          <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:6px 0;">
+            <input type="checkbox" id="examDs301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);"> DS301
+          </label>
+          <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:6px 0;">
+            <input type="checkbox" id="examDv301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);"> DV301
+          </label>
+          <small>Ohne Auswahl werden Signale aus allen Regelwerken berücksichtigt.</small>
+        </div>
         <button type="button" class="category-toggle" id="examToggleCategories">
           Signalgruppen auswählen ▼
         </button>
@@ -728,6 +748,18 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <textarea id="meaning" placeholder="Vollständige Bedeutung..."></textarea>
     <label for="category">Kategorie</label>
     <select id="category"></select>
+    <div class="filter-box" style="display:block;">
+      <strong style="display:block;margin-bottom:9px;">Zuordnung (optional)</strong>
+      <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:7px 0;">
+        <input type="checkbox" id="signalDs301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);">
+        DS301
+      </label>
+      <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:7px 0;">
+        <input type="checkbox" id="signalDv301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);">
+        DV301
+      </label>
+      <small>Keine Pflichtangabe. Ein Signal kann auch beiden Regelwerken zugeordnet werden.</small>
+    </div>
     <label for="imageUrl">Bild-URL (optional)</label>
     <input id="imageUrl" placeholder="https://...">
     <div class="actions">
@@ -1792,11 +1824,13 @@ async function saveSignal(){
   const long=$("longName").value.trim();
   const meaning=$("meaning").value.trim();
   const category=$("category").value||"Sonstige";
+  const ds301=$("signalDs301").checked;
+  const dv301=$("signalDv301").checked;
   if(!short||!long||!meaning)return notify("Bitte alle drei Textfelder ausfüllen.");
   const previous=id?signals.find(s=>String(s.id)===String(id)):null;
   if(id&&!previous)return notify("Das Signal wurde nicht gefunden. Bitte neu laden.");
   const imageValue=tempImageBase64||$("imageUrl").value.trim()||(previous?.image||"");
-  const payload={short,long,meaning,category,image:imageValue,user_id:currentUser.id};
+  const payload={short,long,meaning,category,ds301,dv301,image:imageValue,user_id:currentUser.id};
   const button=$("saveSignal");
   button.disabled=true;
   try{
@@ -1827,6 +1861,8 @@ function editSignal(id){
     category.add(new Option(signal.category,signal.category));
   }
   category.value=signal.category||"Sonstige";
+  $("signalDs301").checked=signal.ds301===true;
+  $("signalDv301").checked=signal.dv301===true;
   $("imageUrl").value=signal.image?.startsWith("data:")?"":(signal.image||"");
   tempImageBase64="";
   $("imageFile").value="";
@@ -1849,6 +1885,8 @@ function clearForm(){
   tempImageBase64="";
   $("imageFile").value="";
   $("cameraFile").value="";
+  $("signalDs301").checked=false;
+  $("signalDv301").checked=false;
   $("formTitle").textContent="Signal hinzufügen";
   $("saveSignal").textContent="Signal speichern";
   $("clearForm").textContent="Formular leeren";
@@ -2105,7 +2143,7 @@ function renderRoleTutorial(){
   html+=step("📚 Lernen","Unter Lernen kannst du die Signalgruppen über „Signalgruppen auswählen“ aufklappen und einzeln anhaken. Mit „Alle auswählen“ markierst du alle Gruppen. Beantworte Kurzbezeichnung, Langbezeichnung und Bedeutung und prüfe deine Antwort. Über „Nur falsch beantwortete Signale“ kannst du gezielt üben.");
   html+=step("📝 Prüfung","Wähle Signalgruppen und die Anzahl der Fragen aus. Starte die Prüfung und beantworte die Aufgaben. Über Prüfung abbrechen kannst du die laufende Prüfung mit Bestätigung beenden, ohne sie als abgeschlossene Prüfung zu zählen.");
   html+=step("📊 Statistik","Unter Statistik siehst du deine beantworteten Fragen, Punkte und Prüfungsergebnisse. Dort kannst du auch deine Lernstatistik zurücksetzen.");
-  html+=step("🚦 Eigene Signale verwalten","In Verwaltung kannst du Signale mit Kurzbezeichnung, Langbezeichnung, Bedeutung und Kategorie anlegen. Bilder lassen sich über Kamera oder Galerie hinzufügen. Vorhandene Signale kannst du bearbeiten, einzeln oder mehrfach auswählen, teilen und löschen.");
+  html+=step("🚦 Eigene Signale verwalten","In Verwaltung kannst du Signale mit Kurzbezeichnung, Langbezeichnung, Bedeutung und Kategorie anlegen und ihnen optional DS301 und/oder DV301 zuordnen. Bilder lassen sich über Kamera oder Galerie hinzufügen. Vorhandene Signale kannst du bearbeiten, einzeln oder mehrfach auswählen, teilen und löschen.");
   html+=step("💾 Datensicherung","Mit „Daten exportieren“ lädst du deine Signale als JSON-Sicherung herunter. Über „Daten importieren“ kannst du eine Sicherung wieder einlesen. Ein erneuter Import kann Duplikate erzeugen.");
   html+=step("👥 Freunde und Lerngruppen","Im Seitenmenü kannst du Freunde per E-Mail einladen und Anfragen annehmen. Neue Anfragen erscheinen mit einer Zahl bei Freunde. Unter Lerngruppen kannst du selbst Gruppen erstellen und Mitglieder einladen.");
   html+=step("💬 Freundesnachrichten","Unter Freundesnachrichten schreibst du privat mit bestätigten Freunden. Neue Nachrichten erscheinen mit einer Zahl. Das Support- und Trainerpostfach bleibt getrennt.");
@@ -2158,7 +2196,8 @@ function exportSignalData(){
   button.disabled=true;
   try{
     const data={format:"byarmando-signals",version:1,exported_at:new Date().toISOString(),signals:signals.map(s=>({
-      short:s.short||"",long:s.long||"",meaning:s.meaning||"",category:s.category||"Sonstige",image:s.image||""
+      short:s.short||"",long:s.long||"",meaning:s.meaning||"",category:s.category||"Sonstige",
+      ds301:s.ds301===true,dv301:s.dv301===true,image:s.image||""
     }))};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
     const url=URL.createObjectURL(blob);
@@ -2230,7 +2269,7 @@ async function importSignalData(file){
       const image=String(s.image??s.image_url??"").trim();
       if(!short||!long||!meaning)throw new Error("Bei Signal "+(i+1)+" fehlen Kurzbezeichnung, Langbezeichnung oder Bedeutung.");
       // Große eingebettete Bilder werden nach dem Einlesen einzeln komprimiert.
-      return {short,long,meaning,category,image,user_id:currentUser.id};
+      return {short,long,meaning,category,ds301:s.ds301===true,dv301:s.dv301===true,image,user_id:currentUser.id};
     });
     if(!clean.length)return notify("Die Sicherungsdatei enthält keine Signale.");
     if(!confirm(clean.length+" Signale importieren? Große Bilder werden automatisch verkleinert. Bestehende Signale bleiben erhalten. Doppelte Einträge können entstehen."))return;
@@ -2387,14 +2426,30 @@ function renderExamCategories(){
   const categories=[...new Set([...BASE_CATEGORIES,...signals.map(s=>s.category).filter(Boolean)])];
   $("examCategoryChoices").innerHTML=categories.map(c=>`<label class="category-option"><input type="checkbox" value="${esc(c)}" ${selectedExamCategories.has(c)?"checked":""}><span>${esc(CATEGORY_LABELS[c]||c)}</span></label>`).join("");
   $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
-  $("examAvailable").textContent=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige")).length+" Signale in der Auswahl";
+  $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
+}
+
+function getExamSignals(){
+  const useDs301=$("examDs301").checked;
+  const useDv301=$("examDv301").checked;
+  return signals.filter(s=>{
+    const categoryOK=selectedExamCategories.has(s.category||"Sonstige");
+    const standardOK=(!useDs301&&!useDv301) ||
+      (useDs301&&s.ds301===true) || (useDv301&&s.dv301===true);
+    return categoryOK && standardOK;
+  });
 }
 
 function getLearnSignals(){
-  return signals.filter(s=>
-    selectedLearnCategories.has(s.category||"Sonstige") &&
-    (!$("onlyWrongFilter").checked || wrongSignalIds.has(s.id))
-  );
+  const useDs301=$("learnDs301").checked;
+  const useDv301=$("learnDv301").checked;
+  return signals.filter(s=>{
+    const categoryOK=selectedLearnCategories.has(s.category||"Sonstige");
+    const standardOK=(!useDs301&&!useDv301) ||
+      (useDs301&&s.ds301===true) || (useDv301&&s.dv301===true);
+    return categoryOK && standardOK &&
+      (!$("onlyWrongFilter").checked || wrongSignalIds.has(s.id));
+  });
 }
 
 function nextLearn(){
@@ -2577,7 +2632,7 @@ function installRepair(){
     if(e.target.checked)selectedExamCategories.add(e.target.value);
     else selectedExamCategories.delete(e.target.value);
     $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
-    $("examAvailable").textContent=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige")).length+" Signale in der Auswahl";
+    $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
   });
   $("examSelectAll").addEventListener("click",()=>{
     selectedExamCategories=new Set([...BASE_CATEGORIES,...signals.map(s=>s.category).filter(Boolean)]);
@@ -2585,6 +2640,10 @@ function installRepair(){
   });
 
   $("onlyWrongFilter").addEventListener("change",nextLearn);
+  ["learnDs301","learnDv301"].forEach(id=>$(id).addEventListener("change",nextLearn));
+  ["examDs301","examDv301"].forEach(id=>$(id).addEventListener("change",()=>{
+    $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
+  }));
 
   const observer=new MutationObserver(()=>{
     repairCategories();
@@ -2602,7 +2661,7 @@ let examQuestions=[], examIndex=0, examCorrect=0, examStartedAt=0, examAnswered=
 function examStopClock(){if(examClock){clearInterval(examClock);examClock=null;}}
 function examTimeText(){const sec=Math.floor((Date.now()-examStartedAt)/1000);return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");}
 function startExamSession(){
-  const pool=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige"));
+  const pool=getExamSignals();
   if(!selectedExamCategories.size)return notify("Bitte mindestens eine Signalgruppe auswählen.");
   if(!pool.length)return notify("In den gewählten Signalgruppen sind keine Signale vorhanden.");
   const wanted=Number($("examLength").value)||10;
