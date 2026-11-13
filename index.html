@@ -661,6 +661,13 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 <section id="shared" class="page" hidden>
   <div class="panel">
     <h2>📨 Geteilte Signale</h2>
+    <div id="sharedBulkActions" class="bulk-toolbar" hidden>
+      <div id="sharedPendingCount" class="selection-count"></div>
+      <div class="actions">
+        <button type="button" class="good" id="acceptAllShared">✓ Alle übernehmen</button>
+        <button type="button" class="danger" id="rejectAllShared">✕ Alle ablehnen</button>
+      </div>
+    </div>
     <div id="sharedSignalsList"><p class="muted">Keine geteilten Signale vorhanden.</p></div>
   </div>
 </section>
@@ -1955,11 +1962,16 @@ function shareSignalPrompt(signalId){
   if(signal)openShareDialog([signal]);
 }
 
+let sharedBulkRunning=false;
 async function loadSharedSignals(){
+  if(!currentUser)return;
   try{
     const {data,error}=await _supabase.from("shared_signals").select("*").eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending");
     if(error)throw error;
     $("sharedBadge").hidden=!(data||[]).length;
+    $("sharedBadge").textContent=(data||[]).length;
+    $("sharedBulkActions").hidden=!(data||[]).length;
+    $("sharedPendingCount").textContent=(data||[]).length+" ausstehende Signale";
     updateFriendNotificationDot();
     $("sharedSignalsList").innerHTML=(data||[]).map(item=>`
       <div class="signal-card">
@@ -1974,6 +1986,55 @@ async function loadSharedSignals(){
     $("sharedSignalsList").textContent="Geteilte Signale konnten nicht geladen werden: "+err.message;
   }
 }
+
+async function processAllShared(accept){
+  if(!currentUser||sharedBulkRunning)return;
+  const email=currentUser.email.toLowerCase();
+  const {data:items,error:loadError}=await _supabase.from("shared_signals")
+    .select("*").eq("recipient_email",email).eq("status","pending");
+  if(loadError)return notify("Geteilte Signale konnten nicht geladen werden: "+loadError.message);
+  if(!items?.length){await loadSharedSignals();return notify("Keine ausstehenden Signale.");}
+  const action=accept?"übernehmen":"ablehnen";
+  if(!confirm(`Wirklich alle ${items.length} geteilten Signale ${action}?`))return;
+  sharedBulkRunning=true;
+  const buttons=[$("acceptAllShared"),$("rejectAllShared")];
+  buttons.forEach(b=>b.disabled=true);
+  let completed=0;
+  try{
+    for(const item of items){
+      if(accept){
+        // Zuerst kopieren, erst danach die Freigabe als angenommen markieren.
+        const {error:insertError}=await _supabase.from("signals").insert([{
+          short:item.signal_data.short,long:item.signal_data.long,
+          meaning:item.signal_data.meaning,category:item.signal_data.category||"Sonstige",
+          image:item.signal_data.image||"",user_id:currentUser.id
+        }]);
+        if(insertError)throw insertError;
+        const {error:updateError}=await _supabase.from("shared_signals")
+          .update({status:"accepted"}).eq("id",item.id)
+          .eq("recipient_email",email).eq("status","pending");
+        if(updateError)throw updateError;
+      }else{
+        const {data:removed,error:deleteError}=await _supabase.from("shared_signals")
+          .delete().eq("id",item.id).eq("recipient_email",email)
+          .eq("status","pending").select("id");
+        if(deleteError)throw deleteError;
+        if(!removed?.length)throw Error("Freigabe konnte nicht entfernt werden.");
+      }
+      completed++;
+    }
+    notify(completed+" geteilte Signale "+(accept?"übernommen.":"abgelehnt."));
+  }catch(err){
+    alert(`Aktion nach ${completed} von ${items.length} Signalen abgebrochen: ${err.message||err}`);
+  }finally{
+    sharedBulkRunning=false;
+    buttons.forEach(b=>b.disabled=false);
+    await loadSharedSignals();
+    if(accept)await loadCloudSignals();
+  }
+}
+$("acceptAllShared").addEventListener("click",()=>processAllShared(true));
+$("rejectAllShared").addEventListener("click",()=>processAllShared(false));
 
 document.addEventListener("click",async e=>{
   const btn=e.target.closest(".btn-remove-shared");
