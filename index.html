@@ -187,38 +187,6 @@ label {display:block;color:var(--muted);font-size:13px;font-weight:500}
   background:#103328;border-left:3px solid var(--green);
   padding:10px 12px;border-radius:8px;margin-top:10px;font-size:14px;
 }
-.ticket-search-wrap {display:flex;align-items:center;gap:9px;background:#111c29;border:1px solid var(--border);border-radius:10px;padding:7px 11px;margin:10px 0 4px}
-.ticket-search-wrap input {border:0!important;background:transparent!important;padding:7px 2px!important;min-width:0;box-shadow:none!important}
-.ticket-search-hint {font-size:12px;margin:3px 0 12px}
-.ticket-compact {padding:0!important;margin:8px 0!important;overflow:hidden}
-.ticket-compact>summary {cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px}
-.ticket-compact>summary::-webkit-details-marker {display:none}
-.ticket-compact>summary:after {content:"＋";color:var(--accent);font-weight:800;margin-left:auto}
-.ticket-compact[open]>summary:after {content:"−"}
-.ticket-compact .ticket-summary-main {min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.ticket-compact .ticket-summary-email {font-size:12px;color:var(--muted);overflow-wrap:anywhere}
-.ticket-compact .ticket-content {padding:0 10px 10px;border-top:1px solid var(--border)}
-.admin-ticket-section {padding:0!important;margin:10px 0!important;overflow:hidden}
-.admin-ticket-section>summary {cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px;padding:12px 14px;font-weight:800}
-.admin-ticket-section>summary::-webkit-details-marker {display:none}
-.admin-ticket-section>summary:after {content:"＋";margin-left:auto;color:var(--accent);font-weight:900}
-.admin-ticket-section[open]>summary:after {content:"−"}
-.admin-ticket-section-content {padding:0 10px 10px;border-top:1px solid var(--border)}
-.ticket-count {font-size:11px;line-height:1;padding:4px 7px;border-radius:99px;background:var(--panel2);color:var(--accent)}
-.admin-ticket-card {margin:8px 0!important;padding:0!important;overflow:hidden}
-.admin-ticket-card>summary {cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px}
-.admin-ticket-card>summary::-webkit-details-marker {display:none}
-.admin-ticket-card>summary:after {content:"＋";margin-left:auto;color:var(--accent);font-weight:900}
-.admin-ticket-card[open]>summary:after {content:"−"}
-.admin-ticket-card .admin-ticket-preview {font-size:12px;color:var(--muted);min-width:0;flex:1 1 100%;overflow-wrap:anywhere}
-.admin-ticket-card .ticket-content {padding:0 10px 10px;border-top:1px solid var(--border)}
-.admin-ticket-category {margin:8px 0!important;padding:0!important;overflow:hidden}
-.admin-ticket-category>summary {cursor:pointer;padding:9px 11px;font-weight:700;list-style:none}
-.admin-ticket-category>summary::-webkit-details-marker {display:none}
-
-.support-ticket {padding:10px;margin:8px 0}
-.support-ticket .support-thread {margin-top:6px!important}
-.support-ticket .admin-reply-box {padding:8px 10px;margin:6px 0!important}
 .tutorial-step {
   background:#111c29;border:1px solid var(--border);
   border-radius:12px;padding:14px;margin-bottom:10px;
@@ -275,29 +243,6 @@ label {display:block;color:var(--muted);font-size:13px;font-weight:500}
 .category-summary {
   color:var(--accent);font-size:13px;font-weight:700;margin-top:10px;
 }
-.rule-filter {
-  background:#111c29;border:1px solid var(--border);
-  border-radius:10px;margin:10px 0 12px;overflow:hidden;
-}
-.rule-filter-toggle {
-  width:100%;text-align:left;padding:11px 12px;margin:0;
-  color:var(--text);font-size:13px;font-weight:700;
-  background:transparent;border:0;border-radius:0;
-  display:flex;align-items:center;justify-content:space-between;
-}
-.rule-filter-toggle::after {content:"＋";color:var(--accent);font-size:17px;line-height:1}
-.rule-filter-toggle[aria-expanded="true"]::after {content:"−"}
-.rule-filter-content {padding:0 12px 10px}
-.rule-filter-content[hidden] {display:none !important}
-.rule-filter-content label {
-  display:flex;align-items:center;gap:9px;color:var(--text);
-  margin:7px 0;font-size:14px;
-}
-.rule-filter-content input[type="checkbox"] {
-  width:19px;height:19px;margin:0;accent-color:var(--accent);flex-shrink:0;
-}
-.rule-filter-content small {display:block;margin-top:8px}
-
 
 .category-toggle {
   width:100%;margin-top:10px;padding:10px;font-size:13px;
@@ -318,6 +263,11 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
   .category-grid {grid-template-columns:1fr 1fr}
   .category-picker-header button {font-size:11px!important}
 }
+
+.gc-presentation-item{border:1px solid var(--border,#7775);border-radius:10px;margin:8px 0;padding:10px 12px}
+.gc-presentation-item summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.gc-presentation-item .actions{margin-top:12px}
+.gc-presentations{margin-top:16px}
 </style>
 </head>
 
@@ -429,14 +379,6 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
       </div>
       <div id="learnCategoryChoices" class="category-grid collapsed"></div>
       <div id="learnCategorySummary" class="category-summary"></div>
-      <div class="rule-filter">
-        <button type="button" class="rule-filter-toggle" id="learnRuleFilterToggle" aria-expanded="false">Regelwerk filtern (optional)</button>
-        <div class="rule-filter-content" id="learnRuleFilterContent" hidden>
-          <label><input type="checkbox" id="learnDs301"> DS301</label>
-          <label><input type="checkbox" id="learnDv301"> DV301</label>
-          <small>Ohne Auswahl werden Signale aus allen Regelwerken berücksichtigt.</small>
-        </div>
-      </div>
       <button type="button" class="category-toggle" id="learnToggleCategories">
         Signalgruppen auswählen ▼
       </button>
@@ -492,14 +434,6 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
         </div>
         <div id="examCategoryChoices" class="category-grid collapsed"></div>
         <div id="examCategorySummary" class="category-summary"></div>
-        <div class="rule-filter">
-          <button type="button" class="rule-filter-toggle" id="examRuleFilterToggle" aria-expanded="false">Regelwerk filtern (optional)</button>
-          <div class="rule-filter-content" id="examRuleFilterContent" hidden>
-            <label><input type="checkbox" id="examDs301"> DS301</label>
-            <label><input type="checkbox" id="examDv301"> DV301</label>
-            <small>Ohne Auswahl werden Signale aus allen Regelwerken berücksichtigt.</small>
-          </div>
-        </div>
         <button type="button" class="category-toggle" id="examToggleCategories">
           Signalgruppen auswählen ▼
         </button>
@@ -678,6 +612,27 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
       <button type="button" class="primary" id="coursePopupBtn">📢 Popup an Kurs senden</button>
     </div>
 
+    <div id="adminCourseManagement" class="panel" hidden>
+      <h3>🛡️ Admin: Kursverwaltung</h3>
+      <p class="muted">Upload-Rechte für diesen Kurs getrennt steuern.</p>
+      <label class="filter-box"><input type="checkbox" id="adminLockPresentations"> Präsentations-Uploads sperren</label>
+      <label class="filter-box"><input type="checkbox" id="adminLockFiles"> Normale Datei-Uploads sperren</label>
+      <button type="button" class="primary" id="adminSaveCourseLocks" style="width:100%">Upload-Sperren speichern</button>
+      <div id="adminCourseManageList" style="margin-top:14px"><p class="muted">Lade Kursinhalte …</p></div>
+    </div>
+
+    <hr>
+    <section class="gc-presentations panel" aria-label="Kurspräsentationen">
+      <h3>🖥️ Interaktive Kurspräsentationen</h3>
+      <p class="muted">Im Kurs öffnen oder für die Offline-Nutzung auf diesem Gerät vormerken. Es werden nur eigenständige HTML-Webpräsentationen unterstützt (noch keine automatische PowerPoint-Umwandlung).</p>
+      <div id="gcPresentationTrainer" hidden>
+        <label>Titel <input id="gcPresentationTitle" maxlength="140" placeholder="z. B. Signalbuch – Grundlagen"></label>
+        <label>Interaktive HTML-Präsentation (eine vollständige .html-Datei, maximal 10 MB) <input id="gcPresentationFile" type="file" accept=".html,text/html"></label>
+        <button class="primary" id="gcPresentationUpload" type="button">Präsentation hochladen</button>
+      </div>
+      <p id="gcPresentationUsage" class="muted"></p>
+      <div id="gcPresentationList"><p class="muted">Lade Präsentationen …</p></div>
+    </section>
     <hr>
     <h3>📚 Lernmaterialien & Aufgaben</h3>
     <div id="courseMaterialsList"><p class="muted">Keine Materialien vorhanden.</p></div>
@@ -746,6 +701,14 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 <!-- VERWALTUNG -->
 <section id="manage" class="page" hidden>
 
+  <div class="panel" id="adminTrainerOverviewPanel" hidden>
+    <h2>👥 Trainer- und Kursverwaltung</h2>
+    <p class="muted">Alle freigeschalteten Trainer anzeigen, deren Kurse öffnen und Kursinhalte zentral verwalten.</p>
+    <div class="ticket-search-wrap"><span aria-hidden="true">🔎</span><input type="search" id="adminTrainerSearch" placeholder="Trainer oder Kurs suchen …" autocomplete="off"></div>
+    <div id="adminTrainerOverviewList"><p class="muted">Lade Trainer …</p></div>
+    <div id="adminTrainerCourses" hidden></div>
+  </div>
+
   <div class="panel" id="adminTrainerPanel" hidden>
     <h2 style="margin-bottom:4px;">🛡️ Trainer-Anträge verwalten</h2>
     <div id="adminTrainerRequestsList"><p class="muted">Lade Anträge...</p></div>
@@ -784,22 +747,8 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
   </div>
 
   <div class="panel" id="adminSupportPanel" hidden>
-    <h2>📨 Support & Ticket-Postfach</h2>
-    <div class="ticket-search-wrap"><span aria-hidden="true">🔎</span><input type="search" id="adminTicketSearch" placeholder="Tickets suchen: E-Mail, Anliegen, Nachricht oder ID …" autocomplete="off"></div>
-    <p class="muted ticket-search-hint">Die Suche filtert offene, beantwortete und geschlossene Tickets.</p>
-    <details class="panel admin-ticket-section" id="adminOpenSection">
-      <summary>📥 Offene Anfragen <span class="ticket-count" id="adminOpenCount">0</span></summary>
-      <div class="admin-ticket-section-content" id="adminSupportList"><p class="muted">Lade Anfragen...</p></div>
-    </details>
-    <details class="panel admin-ticket-section" id="adminAnsweredSection">
-      <summary>📁 Beantwortete Tickets – Postfach <span class="ticket-count" id="adminAnsweredCount">0</span></summary>
-      <p class="muted">Nach Anliegen sortiert. Nutzer können hierauf weiter antworten, bis du das Ticket schließt.</p>
-      <div class="admin-ticket-section-content" id="adminAnsweredFolders"><p class="muted">Lade Postfach...</p></div>
-    </details>
-    <details class="panel admin-ticket-section" id="adminClosedSection">
-      <summary>🔒 Geschlossene Tickets <span class="ticket-count" id="adminClosedCount">0</span></summary>
-      <div class="admin-ticket-section-content" id="adminClosedTickets"><p class="muted">Lade Tickets...</p></div>
-    </details>
+    <h2>📨 Support-Anfragen</h2>
+    <div id="adminSupportList"><p class="muted">Lade Anfragen...</p></div>
   </div>
 
   <div class="panel">
@@ -813,18 +762,6 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <textarea id="meaning" placeholder="Vollständige Bedeutung..."></textarea>
     <label for="category">Kategorie</label>
     <select id="category"></select>
-    <div class="filter-box" style="display:block;">
-      <strong style="display:block;margin-bottom:9px;">Zuordnung (optional)</strong>
-      <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:7px 0;">
-        <input type="checkbox" id="signalDs301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);">
-        DS301
-      </label>
-      <label style="display:flex;align-items:center;gap:9px;color:var(--text);margin:7px 0;">
-        <input type="checkbox" id="signalDv301" style="width:19px;height:19px;margin:0;accent-color:var(--accent);">
-        DV301
-      </label>
-      <small>Keine Pflichtangabe. Ein Signal kann auch beiden Regelwerken zugeordnet werden.</small>
-    </div>
     <label for="imageUrl">Bild-URL (optional)</label>
     <input id="imageUrl" placeholder="https://...">
     <div class="actions">
@@ -921,8 +858,8 @@ let sharePendingSignals=[];
 let activeGroupId=null;
 let activeCourseId=null;
 
-const BASE_CATEGORIES=["Lf","Bü","Ne","Hp","Vr","Ks","Hl","Sh","Ra","Zs","El","So","Wn","Zp","Zg","Ts","Fz","Mastschilder","Sonstige"];
-const CATEGORY_LABELS={"Lf":"Lf – Langsamfahrsignale","Bü":"Bü – Bahnübergangssignale","Ne":"Ne – Nebensignale","Hp":"Hp – Hauptsignale","Vr":"Vr – Vorsignale","Ks":"Ks – Kombinationssignale","Hl":"Hl – Hl-Signale","Sh":"Sh – Schutzsignale","Ra":"Ra – Rangiersignale","Zs":"Zs – Zusatzsignale","El":"El – Fahrleitungssignale","So":"So – Sonstige Signale","Wn":"Wn – Weichensignale","Zp":"Zp – Zugpersonalsignale","Zg":"Zg – Zugbegleitersignale","Ts":"Ts – Signale für Schiebelokomotiven und Sperrfahrten","Fz":"Fz – Signale an einzelnen Fahrzeugen","Mastschilder":"Mastschilder","Sonstige":"Sonstige"};
+const BASE_CATEGORIES=["Lf","Bü","Ne","Hp","Vr","Ks","Hl","Sh","Ra","Zs","El","So","Wn","Zp","Zg","Ts","Mastschilder","Sonstige"];
+const CATEGORY_LABELS={"Lf":"Lf – Langsamfahrsignale","Bü":"Bü – Bahnübergangssignale","Ne":"Ne – Nebensignale","Hp":"Hp – Hauptsignale","Vr":"Vr – Vorsignale","Ks":"Ks – Kombinationssignale","Hl":"Hl – Hl-Signale","Sh":"Sh – Schutzsignale","Ra":"Ra – Rangiersignale","Zs":"Zs – Zusatzsignale","El":"El – Fahrleitungssignale","So":"So – Sonstige Signale","Wn":"Wn – Weichensignale","Zp":"Zp – Zugpersonalsignale","Zg":"Zg – Zugbegleitersignale","Ts":"Ts – Türen- und sonstige Betriebssignale","Mastschilder":"Mastschilder","Sonstige":"Sonstige"};
 
 let selectedLearnCategories=new Set(BASE_CATEGORIES);
 let selectedExamCategories=new Set(BASE_CATEGORIES);
@@ -1139,6 +1076,7 @@ async function initUserSession(){
   if($("adminSupportPanel"))$("adminSupportPanel").hidden=!admin;
   if($("adminBroadcastPanel"))$("adminBroadcastPanel").hidden=!admin;
   if($("adminTrainerPanel"))$("adminTrainerPanel").hidden=!admin;
+  if($("adminTrainerOverviewPanel"))$("adminTrainerOverviewPanel").hidden=!admin;
 
   await loadRegisteredUsersList();
   await checkTrainerStatus();
@@ -1148,6 +1086,7 @@ async function initUserSession(){
     loadAdminStats();
     loadAdminSupport();
     loadAdminTrainerRequests();
+    loadAdminTrainerOverview();
   }
 
   loadCloudSignals();
@@ -1242,6 +1181,82 @@ document.addEventListener("click", async e=>{
     notify("Antrag abgelehnt.");
     loadAdminTrainerRequests();
   }
+});
+
+
+/* ADMIN: Trainerübersicht, Kursverwaltung und getrennte Upload-Sperren */
+let adminTrainerCourseCache=[];
+async function loadAdminTrainerOverview(){
+ if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase())return;
+ const box=$("adminTrainerOverviewList");if(!box)return;
+ box.textContent="Lade Trainer …";
+ try{
+  const {data:courses,error}=await _supabase.from("courses").select("id,name,trainer_email,created_at").order("name");
+  if(error)throw error;
+  const trainerEmails=[...new Set((courses||[]).map(c=>String(c.trainer_email||"").trim()).filter(Boolean))];
+  adminTrainerCourseCache=trainerEmails.map(email=>({email,courses:(courses||[]).filter(c=>String(c.trainer_email).toLowerCase()===email.toLowerCase())}));
+  renderAdminTrainerOverview();
+ }catch(err){box.textContent="Trainerübersicht konnte nicht geladen werden: "+err.message;}
+}
+function renderAdminTrainerOverview(){
+ const box=$("adminTrainerOverviewList");if(!box)return;
+ const q=String($("adminTrainerSearch")?.value||"").trim().toLowerCase();
+ const rows=adminTrainerCourseCache.filter(t=>String(t.email||"").toLowerCase().includes(q)||t.courses.some(c=>String(c.name||"").toLowerCase().includes(q)));
+ box.innerHTML=rows.map(t=>`<details class="signal-card" style="margin:8px 0"><summary style="cursor:pointer"><b>${esc(t.email||"Trainer ohne E-Mail")}</b> <span class="muted">· ${t.courses.length} Kurs(e)</span></summary><div style="padding-top:10px">${t.courses.map(c=>`<div class="signal-card"><b>${esc(c.name)}</b><p class="muted">${new Date(c.created_at).toLocaleDateString("de-DE")}</p><button type="button" class="primary admin-open-trainer-course" data-id="${esc(c.id)}">Kurs öffnen und verwalten</button></div>`).join("")||"<p class='muted'>Dieser Trainer verwaltet aktuell keine eigenen Kurse.</p>"}</div></details>`).join("")||"<p class='muted'>Keine passenden Trainer gefunden.</p>";
+}
+async function adminLoadCourseManagement(courseId){
+ const {data,error}=await _supabase.from("course_upload_controls").select("*").eq("course_id",courseId).maybeSingle();
+ if(error)throw error;
+ $("adminLockPresentations").checked=!!data?.presentations_locked;
+ $("adminLockFiles").checked=!!data?.files_locked;
+ await adminRenderCourseItems(courseId);
+}
+async function adminRenderCourseItems(courseId){
+ const box=$("adminCourseManageList");if(!box)return;
+ const [{data:p,error:pe},{data:m,error:me}]=await Promise.all([
+  _supabase.from("course_presentations").select("id,title,created_at,size_bytes").eq("course_id",courseId).order("created_at",{ascending:false}),
+  _supabase.from("course_materials").select("id,title,is_homework,created_at").eq("course_id",courseId).order("created_at",{ascending:false})
+ ]);
+ if(pe)throw pe;if(me)throw me;
+ box.innerHTML=`<h4>Präsentationen und Dateien dieses Kurses</h4>`+
+  (p||[]).map(x=>`<div class="signal-card"><b>🖥️ ${esc(x.title)}</b><div class="actions"><button type="button" class="danger admin-delete-presentation" data-id="${esc(x.id)}">Präsentation löschen</button></div></div>`).join("")+
+  (m||[]).map(x=>`<div class="signal-card"><b>📄 ${esc(x.title)}</b><small> ${x.is_homework?"Hausaufgabe":"Kursdatei"}</small><div class="actions"><button type="button" class="danger admin-delete-course-material" data-id="${esc(x.id)}">Material löschen</button></div></div>`).join("")+
+  (!(p||[]).length&&!(m||[]).length?"<p class='muted'>Noch keine Dateien oder Präsentationen vorhanden.</p>":"");
+}
+document.addEventListener("input",e=>{if(e.target?.id==="adminTrainerSearch")renderAdminTrainerOverview();});
+document.addEventListener("click",async e=>{
+ const open=e.target.closest(".admin-open-trainer-course");
+ const delP=e.target.closest(".admin-delete-presentation");
+ const delM=e.target.closest(".admin-delete-course-material");
+ if(open){activeCourseId=open.dataset.id;await openCourse(activeCourseId);return;}
+ try{
+  if(delP){
+   if(!confirm("Diese Präsentation für alle Kursteilnehmer löschen?"))return;
+   const {data:r,error}=await _supabase.from("course_presentations").select("storage_path").eq("id",delP.dataset.id).single();if(error)throw error;
+   const {error:de}=await _supabase.from("course_presentations").delete().eq("id",delP.dataset.id);if(de)throw de;
+   const {error:se}=await _supabase.storage.from(GC_PRESENTATION_BUCKET).remove([r.storage_path]);if(se)throw se;
+   await adminRenderCourseItems(activeCourseId);await gcLoadPresentations(activeCourseId,true);notify("Präsentation gelöscht.");
+  }
+  if(delM){
+   if(!confirm("Dieses Kursmaterial samt Datei löschen?"))return;
+   const {data:r,error}=await _supabase.from("course_materials").select("storage_path").eq("id",delM.dataset.id).single();if(error)throw error;
+   const {error:de}=await _supabase.from("course_materials").delete().eq("id",delM.dataset.id);if(de)throw de;
+   if(r?.storage_path){const {error:se}=await _supabase.storage.from(BA_BUCKET).remove([r.storage_path]);if(se)throw se;}
+   await adminRenderCourseItems(activeCourseId);await loadCourseMaterials(activeCourseId,true);notify("Kursmaterial gelöscht.");
+  }
+ }catch(err){notify("Admin-Verwaltung: "+err.message);}
+});
+$("adminSaveCourseLocks")?.addEventListener("click",async()=>{
+ if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase()||!activeCourseId)return;
+ const {error}=await _supabase.from("course_upload_controls").upsert({
+  course_id:activeCourseId,
+  presentations_locked:$("adminLockPresentations").checked,
+  files_locked:$("adminLockFiles").checked,
+  updated_at:new Date().toISOString(),
+  updated_by:currentUser.id
+ },{onConflict:"course_id"});
+ if(error){notify("Sperren konnten nicht gespeichert werden: "+error.message);return;}
+ notify("Upload-Sperren gespeichert.");
 });
 
 /* POP-UPS & BROADCASTS */
@@ -1674,7 +1689,15 @@ async function openCourse(courseId){
     window.baCourseOwner=isOwner;
     $("courseAddCoTrainerBtn").hidden=!isOwner;
     $("trainerCourseControls").hidden=!isTrainer;
+    const isAdmin=String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+    $("adminCourseManagement").hidden=!isAdmin;
+    if(isAdmin) await adminLoadCourseManagement(courseId);
+    const {data:uploadLocks}=await _supabase.from("course_upload_controls").select("presentations_locked,files_locked").eq("course_id",courseId).maybeSingle();
+    const filesLocked=!!uploadLocks?.files_locked;
+    const materialUploadButton=$("courseAddMaterialBtn");
+    if(materialUploadButton)materialUploadButton.hidden=filesLocked;
     await loadCourseMaterials(courseId, isTrainer);
+    await gcLoadPresentations(courseId,isTrainer);
     await baCourseExtras(courseId, isTrainer);
   }catch(err){
     notify("Kurs konnte nicht geöffnet werden: "+err.message);
@@ -1819,124 +1842,146 @@ document.addEventListener("click",async e=>{
  }catch(err){alert("Fehler: "+err.message);}
 });
 
-/* SUPPORT & POSTFACH – Tickets mit fortlaufendem Nachrichtenverlauf */
-const SUPPORT_CATEGORIES={
-  Problem:"⚠️ Problem melden",
-  Bewertung:"⭐ Bewertung abgeben",
-  Verbesserungsvorschlag:"💡 Verbesserungsvorschlag"
-};
-const isSupportAdmin=()=>String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
 
-async function getSupportReplies(ticketIds){
-  if(!ticketIds.length)return [];
-  const {data,error}=await _supabase.from("support_replies").select("*").in("ticket_id",ticketIds).order("created_at",{ascending:true});
-  if(error)throw error;
-  return data||[];
+/* GLEISCAMPUS WEB-PRÄSENTATIONEN (MVP): private Einzel-HTML-Dateien, Kursrechte über RLS. */
+const GC_PRESENTATION_BUCKET="course-presentations";
+const GC_PRESENTATION_MAX=10*1024*1024;
+let gcPresentationRows=new Map();
+let gcPresentationObjectUrl=null;
+function gcBytes(n){return n>=1048576?(n/1048576).toFixed(1)+" MB":Math.round(n/1024)+" KB";}
+function gcDb(){return new Promise((resolve,reject)=>{
+ const r=indexedDB.open("gleiscampus-presentations-v1",1);
+ r.onupgradeneeded=()=>r.result.createObjectStore("presentations");
+ r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+});}
+async function gcOffline(action,key,value){const db=await gcDb();return new Promise((resolve,reject)=>{
+ const tx=db.transaction("presentations",action==="get"?"readonly":"readwrite");
+ const st=tx.objectStore("presentations");const req=action==="put"?st.put(value,key):action==="delete"?st.delete(key):st.get(key);
+ req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ tx.oncomplete=()=>db.close();
+});}
+function gcOfflineKey(id){return String(currentUser?.id||"")+":"+id;}
+async function gcFetchHtml(row){
+ const {data,error}=await _supabase.storage.from(GC_PRESENTATION_BUCKET).download(row.storage_path);
+ if(error)throw error;
+ return await data.text();
 }
-function supportThreadHtml(ticket,replies,adminView=false){
-  const messages=[{sender_role:"user",sender_email:ticket.user_email,message:ticket.message,created_at:ticket.created_at},...(replies||[])];
-  if(!replies?.length&&ticket.admin_reply)messages.push({sender_role:"admin",sender_email:"Support",message:ticket.admin_reply,created_at:ticket.updated_at||ticket.created_at});
-  return `<div class="signal-card support-ticket" data-ticket="${esc(ticket.id)}">
-    <div class="row" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="ticket-tag">${esc(SUPPORT_CATEGORIES[ticket.category]||ticket.category||"Sonstige")}</span><small>${esc(ticket.user_email||"")}</small></div>
-    <div class="support-thread" style="margin-top:10px">${messages.map(m=>`<div class="admin-reply-box" style="margin:8px 0"><strong>${m.sender_role==="admin"?"🛡️ Support":"👤 Nutzer"}:</strong><p style="white-space:pre-wrap;margin:5px 0">${esc(m.message)}</p><small>${m.created_at?new Date(m.created_at).toLocaleString("de-DE"):""}</small></div>`).join("")}</div>
-    ${adminView?`<textarea id="reply_${esc(ticket.id)}" placeholder="Antwort schreiben..." rows="3"></textarea><div class="actions"><button type="button" class="good btn-admin-reply" data-id="${esc(ticket.id)}">Antwort senden</button>${ticket.status!=="closed"?`<button type="button" class="danger btn-close-ticket" data-id="${esc(ticket.id)}">Ticket schließen</button>`:""}</div>`:
-      (ticket.status!=="closed"?`<textarea id="user_reply_${esc(ticket.id)}" placeholder="Deine Antwort..." rows="3"></textarea><button type="button" class="primary btn-user-ticket-reply" data-id="${esc(ticket.id)}">Antwort senden</button>`:`<p class="muted">Dieses Ticket wurde geschlossen.</p>`)}
-  </div>`;
+function gcOpenViewer(html,title){
+ document.getElementById("gcPresentationViewer")?.remove();
+ const overlay=document.createElement("div");overlay.id="gcPresentationViewer";
+ overlay.style="position:fixed;inset:0;z-index:9999;background:#10131a;display:flex;flex-direction:column;padding:10px;gap:8px";
+ const bar=document.createElement("div");bar.style="display:flex;gap:12px;align-items:center;color:white";
+ const heading=document.createElement("strong");heading.textContent=title;heading.style="flex:1";
+ const close=document.createElement("button");close.textContent="✕ Schließen";close.onclick=()=>overlay.remove();
+ bar.append(heading,close);
+ const frame=document.createElement("iframe");frame.title=title;
+ frame.setAttribute("sandbox","allow-scripts allow-popups");
+ frame.setAttribute("referrerpolicy","no-referrer");
+ frame.style="flex:1;width:100%;border:0;background:white;border-radius:8px";
+ // Kein allow-same-origin: Präsentationsskripte erhalten keinen Zugriff auf GleisCampus.
+ frame.srcdoc=html;
+ overlay.append(bar,frame);document.body.append(overlay);
 }
+async function gcLoadPresentations(courseId,isTrainer){
+ const trainer=$("gcPresentationTrainer"),list=$("gcPresentationList"),usage=$("gcPresentationUsage");
+ if(!trainer||!list)return;
+ const {data:locks}=await _supabase.from("course_upload_controls").select("presentations_locked").eq("course_id",courseId).maybeSingle();
+ trainer.hidden=!isTrainer||!!locks?.presentations_locked;
+ const {data,error}=await _supabase.from("course_presentations").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ if(error){list.textContent="Präsentationen nicht verfügbar. Bitte zuerst die SQL-Migration ausführen: "+error.message;return;}
+ gcPresentationRows=new Map((data||[]).map(x=>[x.id,x]));
+ const total=(data||[]).reduce((n,x)=>n+Number(x.size_bytes||0),0);
+ usage.textContent="In diesem Kurs: "+gcBytes(total)+" Web-Präsentationen. Supabase-Free-Kontingent gilt für alle Buckets zusammen.";
+ list.innerHTML=(data||[]).map(x=>`<details class="gc-presentation-item"><summary><strong>📽️ ${esc(x.title)}</strong> <small>${gcBytes(x.size_bytes)} · ${new Date(x.created_at).toLocaleDateString("de-DE")}</small></summary><div class="actions"><button type="button" class="primary gc-pres-open" data-id="${esc(x.id)}">▶ Öffnen</button><button type="button" class="gc-pres-offline" data-id="${esc(x.id)}">⬇ In GleisCampus offline speichern</button><button type="button" class="gc-pres-clear" data-id="${esc(x.id)}">Offline-Kopie entfernen</button>${isTrainer?`<button type="button" class="danger gc-pres-delete" data-id="${esc(x.id)}">Löschen</button>`:""}</div></details>`).join("")||"<p class='muted'>Noch keine Präsentationen in diesem Kurs.</p>";
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("button");if(!b||!b.id&&!b.classList.contains("gc-pres-open")&&!b.classList.contains("gc-pres-offline")&&!b.classList.contains("gc-pres-clear")&&!b.classList.contains("gc-pres-delete"))return;
+ if(b.id!=="gcPresentationUpload"&&!b.classList.contains("gc-pres-open")&&!b.classList.contains("gc-pres-offline")&&!b.classList.contains("gc-pres-clear")&&!b.classList.contains("gc-pres-delete"))return;
+ b.disabled=true;
+ try{
+  if(b.id==="gcPresentationUpload"){
+   if($("gcPresentationTrainer").hidden)throw Error("Nur Trainer dürfen Präsentationen hochladen.");
+   const title=$("gcPresentationTitle").value.trim(),file=$("gcPresentationFile").files[0];
+   if(!title||!file)throw Error("Bitte Titel und HTML-Datei auswählen.");
+   if(!/\.html?$/i.test(file.name))throw Error("Bitte eine eigenständige HTML-Webpräsentation auswählen.");
+   if(file.size>GC_PRESENTATION_MAX)throw Error("Datei ist größer als 10 MB.");
+   const path=`${activeCourseId}/${crypto.randomUUID()}.html`;
+   const {error:up}=await _supabase.storage.from(GC_PRESENTATION_BUCKET).upload(path,file,{contentType:"text/html",upsert:false});if(up)throw up;
+   const {error:db}=await _supabase.from("course_presentations").insert({course_id:activeCourseId,title,storage_path:path,size_bytes:file.size,uploaded_by:currentUser.id});
+   if(db){await _supabase.storage.from(GC_PRESENTATION_BUCKET).remove([path]);throw db;}
+   $("gcPresentationTitle").value="";$("gcPresentationFile").value="";
+   notify("Präsentation hochgeladen.");await gcLoadPresentations(activeCourseId,true);
+  }else{
+   const row=gcPresentationRows.get(b.dataset.id);if(!row)throw Error("Präsentation nicht gefunden.");
+   const key=gcOfflineKey(row.id);
+   if(b.classList.contains("gc-pres-open")){
+    const cached=await gcOffline("get",key);
+    gcOpenViewer(cached?.html||await gcFetchHtml(row),row.title);
+   }else if(b.classList.contains("gc-pres-offline")){
+    const html=await gcFetchHtml(row);
+    await gcOffline("put",key,{html,title:row.title,created_at:Date.now()});
+    notify("Auf diesem Gerät gespeichert. Offline verfügbar, solange GleisCampus geöffnet ist.");
+   }else if(b.classList.contains("gc-pres-clear")){
+    await gcOffline("delete",key);notify("Lokale Offline-Kopie entfernt.");
+   }else if(b.classList.contains("gc-pres-delete")){
+    if(!confirm("Präsentation für alle Kursteilnehmer löschen?"))return;
+    const {error}=await _supabase.from("course_presentations").delete().eq("id",row.id);if(error)throw error;
+    const {error:se}=await _supabase.storage.from(GC_PRESENTATION_BUCKET).remove([row.storage_path]);if(se)notify("Datensatz gelöscht, Speicherdatei bitte prüfen: "+se.message);
+    await gcLoadPresentations(activeCourseId,true);
+   }
+  }
+ }catch(err){notify("Präsentation: "+err.message);}finally{b.disabled=false;}
+});
+
+/* SUPPORT & POSTFACH */
 async function sendSupportMessage(){
   const category=$("supportCategory").value;
   const message=$("supportMessage").value.trim();
   if(!message)return notify("Bitte Nachricht eingeben.");
   try{
-    const {error}=await _supabase.from("support_messages").insert([{user_id:currentUser.id,user_email:currentUser.email,category,message,status:"open"}]);
-    if(error)throw error;
-    $("supportMessage").value="";notify("Gesendet!");loadUserInbox();showPage("inbox");
+    await _supabase.from("support_messages").insert([{user_id:currentUser.id, user_email:currentUser.email, category, message}]);
+    $("supportMessage").value="";
+    notify("Gesendet!");
+    loadUserInbox();
+    showPage("inbox");
   }catch(err){notify("Fehler: "+err.message);}
 }
+
 async function loadUserInbox(markAsRead=false){
   if(!currentUser)return;
   const container=$("userInboxList");
   try{
-    const {data,error}=await _supabase.from("support_messages").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
-    if(error)throw error;
-    const tickets=data||[];const replies=await getSupportReplies(tickets.map(t=>t.id));
-    const unread=tickets.filter(t=>t.admin_reply&&!t.is_read).length;
-    $("inboxUnreadBadge").hidden=(unread===0);$("inboxUnreadBadge").textContent=unread;updateFriendNotificationDot();
-    if(markAsRead&&unread>0){await _supabase.from("support_messages").update({is_read:true}).eq("user_id",currentUser.id).not("admin_reply","is",null);$("inboxUnreadBadge").hidden=true;updateFriendNotificationDot();}
-    container.innerHTML=tickets.length?tickets.map(t=>{
-      const status=t.status|| (t.admin_reply?"answered":"open");
-      const label=status==="closed"?"🔒 Geschlossen":status==="answered"?"📨 Beantwortet":"🟡 Offen";
-      const replyList=replies.filter(r=>r.ticket_id===t.id);
-      const lastMessage=replyList.length?replyList[replyList.length-1].message:t.message;
-      const preview=String(lastMessage||"").replace(/\s+/g," ").slice(0,90);
-      return `<details class="panel ticket-compact"><summary><span class="ticket-summary-main"><strong>${esc(SUPPORT_CATEGORIES[t.category]||t.category||"Support")}</strong><span class="ticket-tag">${label}</span><span class="ticket-summary-email">${esc(new Date(t.created_at).toLocaleDateString("de-DE"))} · ${esc(preview)}${String(lastMessage||"").length>90?"…":""}</span></span></summary><div class="ticket-content">${supportThreadHtml(t,replyList,false)}</div></details>`;
-    }).join(""):'<p class="muted">Du hast noch keine Support-Anfragen.</p>';
-  }catch(err){container.innerHTML=`<p class="muted">Postfach konnte nicht geladen werden: ${esc(err.message)}</p>`;}
-}
-function adminTicketCardHtml(ticket,replies){
-  const list=replies.filter(r=>r.ticket_id===ticket.id);
-  const last=list.length?list[list.length-1].message:(ticket.admin_reply||ticket.message||"");
-  const preview=String(last).replace(/\s+/g," ").slice(0,110);
-  const date=ticket.created_at?new Date(ticket.created_at).toLocaleDateString("de-DE"):"";
-  const status=ticket.status||(ticket.admin_reply?"answered":"open");
-  const statusLabel=status==="closed"?"🔒 Geschlossen":status==="answered"?"📨 Beantwortet":"🟡 Offen";
-  return `<details class="panel admin-ticket-card"><summary><span class="ticket-tag">${esc(SUPPORT_CATEGORIES[ticket.category]||ticket.category||"Sonstige")}</span><span class="ticket-tag">${statusLabel}</span><strong>${esc(ticket.user_email||"Unbekannter Nutzer")}</strong><span class="admin-ticket-preview">${esc(date)} · ${esc(preview)}${String(last).length>110?"…":""}</span></summary><div class="ticket-content">${supportThreadHtml(ticket,list,true)}</div></details>`;
-}
-async function loadAdminSupport(){
-  const container=$("adminSupportList");if(!container)return;
-  try{
-    const {data,error}=_supabase.from?await _supabase.from("support_messages").select("*").order("created_at",{ascending:false}):{data:[],error:null};if(error)throw error;
-    const tickets=data||[];const replies=await getSupportReplies(tickets.map(t=>t.id));
-    const status=t=>t.status||(t.admin_reply?"answered":"open");
-    const query=String($("adminTicketSearch")?.value||"").trim().toLocaleLowerCase("de-DE");
-    const matches=t=>{
-      if(!query)return true;
-      const thread=replies.filter(r=>r.ticket_id===t.id).map(r=>r.message).join(" ");
-      return [t.id,t.user_email,t.category,t.message,t.admin_reply,thread].filter(Boolean).join(" ").toLocaleLowerCase("de-DE").includes(query);
-    };
-    const filtered=tickets.filter(matches);
-    const renderList=(list)=>list.length?list.map(t=>adminTicketCardHtml(t,replies)).join(""):'<p class="muted">Keine passenden Tickets gefunden.</p>';
-    const open=filtered.filter(t=>status(t)==="open");
-    container.innerHTML=renderList(open);
-    const answered=filtered.filter(t=>status(t)==="answered");
-    const folder=$("adminAnsweredFolders");
-    folder.innerHTML=answered.length?Object.keys(SUPPORT_CATEGORIES).map(cat=>{
-      const list=answered.filter(t=>t.category===cat);if(!list.length)return "";
-      return `<details class="panel admin-ticket-category"><summary>📂 ${esc(SUPPORT_CATEGORIES[cat])} <span class="ticket-count">${list.length}</span></summary><div class="admin-ticket-section-content">${renderList(list)}</div></details>`;
-    }).join(""):'<p class="muted">Keine passenden beantworteten Tickets im Postfach.</p>';
-    const closed=filtered.filter(t=>status(t)==="closed");
-    $("adminClosedTickets").innerHTML=renderList(closed);
-    $("adminOpenCount").textContent=open.length;
-    $("adminAnsweredCount").textContent=answered.length;
-    $("adminClosedCount").textContent=closed.length;
-  }catch(err){container.innerHTML=`<p class="muted">Support konnte nicht geladen werden: ${esc(err.message)}</p>`;}
+    const {data}=await _supabase.from("support_messages").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
+    const unread=(data||[]).filter(m=>m.admin_reply&&!m.is_read).length;
+    $("inboxUnreadBadge").hidden=(unread===0);
+    $("inboxUnreadBadge").textContent=unread;
+    updateFriendNotificationDot();
+    if(markAsRead&&unread>0){
+      await _supabase.from("support_messages").update({is_read:true}).eq("user_id",currentUser.id).not("admin_reply","is",null);
+      $("inboxUnreadBadge").hidden=true;
+      updateFriendNotificationDot();
+    }
+    container.innerHTML=(data||[]).map(m=>`<div class="signal-card"><span class="ticket-tag">${esc(m.category)}</span><p>${esc(m.message)}</p>${m.admin_reply?`<div class="admin-reply-box"><strong>Antwort:</strong> ${esc(m.admin_reply)}</div>`:""}</div>`).join("");
+  }catch(err){}
 }
 
-$("adminTicketSearch")?.addEventListener("input",()=>loadAdminSupport());
-document.addEventListener("click",async e=>{
-  const adminReply=e.target.closest(".btn-admin-reply");
-  const userReply=e.target.closest(".btn-user-ticket-reply");
-  const closeTicket=e.target.closest(".btn-close-ticket");
+async function loadAdminSupport(){
+  const container=$("adminSupportList");
+  if(!container)return;
   try{
-    if(adminReply){
-      if(!isSupportAdmin())return;
-      const id=adminReply.dataset.id,text=$("reply_"+id).value.trim();if(!text)return notify("Bitte Antwort eingeben.");
-      const {error}=await _supabase.from("support_replies").insert([{ticket_id:id,sender_id:currentUser.id,sender_email:currentUser.email,sender_role:"admin",message:text}]);if(error)throw error;
-      const {error:updateError}=await _supabase.from("support_messages").update({admin_reply:text,is_read:false,status:"answered"}).eq("id",id);if(updateError)throw updateError;
-      notify("Antwort gesendet. Das Ticket liegt jetzt im passenden Postfachordner.");await loadAdminSupport();
-    }else if(userReply){
-      const id=userReply.dataset.id,text=$("user_reply_"+id).value.trim();if(!text)return notify("Bitte Antwort eingeben.");
-      const {data:ticket,error:readError}=await _supabase.from("support_messages").select("status").eq("id",id).single();if(readError)throw readError;if(ticket.status==="closed")return notify("Dieses Ticket ist geschlossen.");
-      const {error}=await _supabase.from("support_replies").insert([{ticket_id:id,sender_id:currentUser.id,sender_email:currentUser.email,sender_role:"user",message:text}]);if(error)throw error;
-      const {error:updateError}=await _supabase.from("support_messages").update({status:"open",is_read:false}).eq("id",id);if(updateError)throw updateError;
-      notify("Antwort gesendet. Das Ticket ist wieder offen.");await loadUserInbox();
-    }else if(closeTicket){
-      if(!isSupportAdmin())return;
-      if(!confirm("Ticket wirklich schließen? Der Nutzer kann danach nicht mehr antworten."))return;
-      const {error}=await _supabase.from("support_messages").update({status:"closed",closed_at:new Date().toISOString()}).eq("id",closeTicket.dataset.id);if(error)throw error;
-      notify("Ticket geschlossen.");await loadAdminSupport();
-    }
-  }catch(err){notify("Fehler: "+err.message);}
+    const {data}=await _supabase.from("support_messages").select("*").order("created_at",{ascending:false});
+    container.innerHTML=(data||[]).map(m=>`<div class="signal-card"><p><b>${esc(m.user_email)}</b>: ${esc(m.message)}</p><textarea id="reply_${esc(m.id)}" placeholder="Antwort...">${esc(m.admin_reply||"")}</textarea><button type="button" class="good btn-admin-reply" data-id="${esc(m.id)}">Senden</button></div>`).join("");
+  }catch(err){}
+}
+
+document.addEventListener("click", async e=>{
+  const btn=e.target.closest(".btn-admin-reply");
+  if(btn){
+    const text=$("reply_"+btn.dataset.id).value.trim();
+    if(text)await _supabase.from("support_messages").update({admin_reply:text, is_read:false}).eq("id",btn.dataset.id);
+    notify("Antwort gesendet!");
+    loadAdminSupport();
+  }
 });
 
 /* GRUNDLEGENDE SIGNAL-VERWALTUNG */
@@ -1958,13 +2003,11 @@ async function saveSignal(){
   const long=$("longName").value.trim();
   const meaning=$("meaning").value.trim();
   const category=$("category").value||"Sonstige";
-  const ds301=$("signalDs301").checked;
-  const dv301=$("signalDv301").checked;
   if(!short||!long||!meaning)return notify("Bitte alle drei Textfelder ausfüllen.");
   const previous=id?signals.find(s=>String(s.id)===String(id)):null;
   if(id&&!previous)return notify("Das Signal wurde nicht gefunden. Bitte neu laden.");
   const imageValue=tempImageBase64||$("imageUrl").value.trim()||(previous?.image||"");
-  const payload={short,long,meaning,category,ds301,dv301,image:imageValue,user_id:currentUser.id};
+  const payload={short,long,meaning,category,image:imageValue,user_id:currentUser.id};
   const button=$("saveSignal");
   button.disabled=true;
   try{
@@ -1995,8 +2038,6 @@ function editSignal(id){
     category.add(new Option(signal.category,signal.category));
   }
   category.value=signal.category||"Sonstige";
-  $("signalDs301").checked=signal.ds301===true;
-  $("signalDv301").checked=signal.dv301===true;
   $("imageUrl").value=signal.image?.startsWith("data:")?"":(signal.image||"");
   tempImageBase64="";
   $("imageFile").value="";
@@ -2019,8 +2060,6 @@ function clearForm(){
   tempImageBase64="";
   $("imageFile").value="";
   $("cameraFile").value="";
-  $("signalDs301").checked=false;
-  $("signalDv301").checked=false;
   $("formTitle").textContent="Signal hinzufügen";
   $("saveSignal").textContent="Signal speichern";
   $("clearForm").textContent="Formular leeren";
@@ -2277,7 +2316,7 @@ function renderRoleTutorial(){
   html+=step("📚 Lernen","Unter Lernen kannst du die Signalgruppen über „Signalgruppen auswählen“ aufklappen und einzeln anhaken. Mit „Alle auswählen“ markierst du alle Gruppen. Beantworte Kurzbezeichnung, Langbezeichnung und Bedeutung und prüfe deine Antwort. Über „Nur falsch beantwortete Signale“ kannst du gezielt üben.");
   html+=step("📝 Prüfung","Wähle Signalgruppen und die Anzahl der Fragen aus. Starte die Prüfung und beantworte die Aufgaben. Über Prüfung abbrechen kannst du die laufende Prüfung mit Bestätigung beenden, ohne sie als abgeschlossene Prüfung zu zählen.");
   html+=step("📊 Statistik","Unter Statistik siehst du deine beantworteten Fragen, Punkte und Prüfungsergebnisse. Dort kannst du auch deine Lernstatistik zurücksetzen.");
-  html+=step("🚦 Eigene Signale verwalten","In Verwaltung kannst du Signale mit Kurzbezeichnung, Langbezeichnung, Bedeutung und Kategorie anlegen und ihnen optional DS301 und/oder DV301 zuordnen. Bilder lassen sich über Kamera oder Galerie hinzufügen. Vorhandene Signale kannst du bearbeiten, einzeln oder mehrfach auswählen, teilen und löschen.");
+  html+=step("🚦 Eigene Signale verwalten","In Verwaltung kannst du Signale mit Kurzbezeichnung, Langbezeichnung, Bedeutung und Kategorie anlegen. Bilder lassen sich über Kamera oder Galerie hinzufügen. Vorhandene Signale kannst du bearbeiten, einzeln oder mehrfach auswählen, teilen und löschen.");
   html+=step("💾 Datensicherung","Mit „Daten exportieren“ lädst du deine Signale als JSON-Sicherung herunter. Über „Daten importieren“ kannst du eine Sicherung wieder einlesen. Ein erneuter Import kann Duplikate erzeugen.");
   html+=step("👥 Freunde und Lerngruppen","Im Seitenmenü kannst du Freunde per E-Mail einladen und Anfragen annehmen. Neue Anfragen erscheinen mit einer Zahl bei Freunde. Unter Lerngruppen kannst du selbst Gruppen erstellen und Mitglieder einladen.");
   html+=step("💬 Freundesnachrichten","Unter Freundesnachrichten schreibst du privat mit bestätigten Freunden. Neue Nachrichten erscheinen mit einer Zahl. Das Support- und Trainerpostfach bleibt getrennt.");
@@ -2330,8 +2369,7 @@ function exportSignalData(){
   button.disabled=true;
   try{
     const data={format:"byarmando-signals",version:1,exported_at:new Date().toISOString(),signals:signals.map(s=>({
-      short:s.short||"",long:s.long||"",meaning:s.meaning||"",category:s.category||"Sonstige",
-      ds301:s.ds301===true,dv301:s.dv301===true,image:s.image||""
+      short:s.short||"",long:s.long||"",meaning:s.meaning||"",category:s.category||"Sonstige",image:s.image||""
     }))};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
     const url=URL.createObjectURL(blob);
@@ -2403,7 +2441,7 @@ async function importSignalData(file){
       const image=String(s.image??s.image_url??"").trim();
       if(!short||!long||!meaning)throw new Error("Bei Signal "+(i+1)+" fehlen Kurzbezeichnung, Langbezeichnung oder Bedeutung.");
       // Große eingebettete Bilder werden nach dem Einlesen einzeln komprimiert.
-      return {short,long,meaning,category,ds301:s.ds301===true,dv301:s.dv301===true,image,user_id:currentUser.id};
+      return {short,long,meaning,category,image,user_id:currentUser.id};
     });
     if(!clean.length)return notify("Die Sicherungsdatei enthält keine Signale.");
     if(!confirm(clean.length+" Signale importieren? Große Bilder werden automatisch verkleinert. Bestehende Signale bleiben erhalten. Doppelte Einträge können entstehen."))return;
@@ -2560,30 +2598,14 @@ function renderExamCategories(){
   const categories=[...new Set([...BASE_CATEGORIES,...signals.map(s=>s.category).filter(Boolean)])];
   $("examCategoryChoices").innerHTML=categories.map(c=>`<label class="category-option"><input type="checkbox" value="${esc(c)}" ${selectedExamCategories.has(c)?"checked":""}><span>${esc(CATEGORY_LABELS[c]||c)}</span></label>`).join("");
   $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
-  $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
-}
-
-function getExamSignals(){
-  const useDs301=$("examDs301").checked;
-  const useDv301=$("examDv301").checked;
-  return signals.filter(s=>{
-    const categoryOK=selectedExamCategories.has(s.category||"Sonstige");
-    const standardOK=(!useDs301&&!useDv301) ||
-      (useDs301&&s.ds301===true) || (useDv301&&s.dv301===true);
-    return categoryOK && standardOK;
-  });
+  $("examAvailable").textContent=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige")).length+" Signale in der Auswahl";
 }
 
 function getLearnSignals(){
-  const useDs301=$("learnDs301").checked;
-  const useDv301=$("learnDv301").checked;
-  return signals.filter(s=>{
-    const categoryOK=selectedLearnCategories.has(s.category||"Sonstige");
-    const standardOK=(!useDs301&&!useDv301) ||
-      (useDs301&&s.ds301===true) || (useDv301&&s.dv301===true);
-    return categoryOK && standardOK &&
-      (!$("onlyWrongFilter").checked || wrongSignalIds.has(s.id));
-  });
+  return signals.filter(s=>
+    selectedLearnCategories.has(s.category||"Sonstige") &&
+    (!$("onlyWrongFilter").checked || wrongSignalIds.has(s.id))
+  );
 }
 
 function nextLearn(){
@@ -2761,25 +2783,12 @@ function installRepair(){
   setCategoryOpen("exam",false);
   $("learnToggleCategories").addEventListener("click",()=>setCategoryOpen("learn",!learnCategoriesOpen));
   $("examToggleCategories").addEventListener("click",()=>setCategoryOpen("exam",!examCategoriesOpen));
-  function setRuleFilterOpen(mode,open){
-    const content=$(mode+"RuleFilterContent");
-    const button=$(mode+"RuleFilterToggle");
-    content.hidden=!open;
-    button.setAttribute("aria-expanded",String(open));
-    button.textContent=open?"Regelwerk ausblenden":"Regelwerk filtern (optional)";
-  }
-  ["learn","exam"].forEach(mode=>{
-    setRuleFilterOpen(mode,false);
-    $(mode+"RuleFilterToggle").addEventListener("click",()=>{
-      setRuleFilterOpen(mode,$(mode+"RuleFilterContent").hidden);
-    });
-  });
   $("examCategoryChoices").addEventListener("change",e=>{
     if(e.target.type!=="checkbox")return;
     if(e.target.checked)selectedExamCategories.add(e.target.value);
     else selectedExamCategories.delete(e.target.value);
     $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
-    $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
+    $("examAvailable").textContent=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige")).length+" Signale in der Auswahl";
   });
   $("examSelectAll").addEventListener("click",()=>{
     selectedExamCategories=new Set([...BASE_CATEGORIES,...signals.map(s=>s.category).filter(Boolean)]);
@@ -2787,10 +2796,6 @@ function installRepair(){
   });
 
   $("onlyWrongFilter").addEventListener("change",nextLearn);
-  ["learnDs301","learnDv301"].forEach(id=>$(id).addEventListener("change",nextLearn));
-  ["examDs301","examDv301"].forEach(id=>$(id).addEventListener("change",()=>{
-    $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
-  }));
 
   const observer=new MutationObserver(()=>{
     repairCategories();
@@ -2808,7 +2813,7 @@ let examQuestions=[], examIndex=0, examCorrect=0, examStartedAt=0, examAnswered=
 function examStopClock(){if(examClock){clearInterval(examClock);examClock=null;}}
 function examTimeText(){const sec=Math.floor((Date.now()-examStartedAt)/1000);return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");}
 function startExamSession(){
-  const pool=getExamSignals();
+  const pool=signals.filter(s=>selectedExamCategories.has(s.category||"Sonstige"));
   if(!selectedExamCategories.size)return notify("Bitte mindestens eine Signalgruppe auswählen.");
   if(!pool.length)return notify("In den gewählten Signalgruppen sind keine Signale vorhanden.");
   const wanted=Number($("examLength").value)||10;
