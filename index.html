@@ -268,6 +268,37 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 .gc-presentation-item summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
 .gc-presentation-item .actions{margin-top:12px}
 .gc-presentations{margin-top:16px}
+.ticket-search-wrap {display:flex;align-items:center;gap:9px;background:#111c29;border:1px solid var(--border);border-radius:10px;padding:7px 11px;margin:10px 0 4px}
+.ticket-search-wrap input {border:0!important;background:transparent!important;padding:7px 2px!important;min-width:0;box-shadow:none!important}
+.ticket-search-hint {font-size:12px;margin:3px 0 12px}
+.ticket-compact {padding:0!important;margin:8px 0!important;overflow:hidden}
+.ticket-compact>summary {cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px}
+.ticket-compact>summary::-webkit-details-marker {display:none}
+.ticket-compact>summary:after {content:"＋";color:var(--accent);font-weight:800;margin-left:auto}
+.ticket-compact[open]>summary:after {content:"−"}
+.ticket-compact .ticket-summary-main {min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ticket-compact .ticket-summary-email {font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ticket-compact .ticket-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.admin-ticket-section {padding:0!important;margin:10px 0!important;overflow:hidden}
+.admin-ticket-section>summary {cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px;padding:12px 14px;font-weight:800}
+.admin-ticket-section>summary::-webkit-details-marker {display:none}
+.admin-ticket-section>summary:after {content:"＋";margin-left:auto;color:var(--accent);font-weight:900}
+.admin-ticket-section[open]>summary:after {content:"−"}
+.admin-ticket-section-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.ticket-count {font-size:11px;line-height:1;padding:4px 7px;border-radius:99px;background:var(--panel2);color:var(--accent)}
+.admin-ticket-card {margin:8px 0!important;padding:0!important;overflow:hidden}
+.admin-ticket-card>summary {cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px}
+.admin-ticket-card>summary::-webkit-details-marker {display:none}
+.admin-ticket-card>summary:after {content:"＋";margin-left:auto;color:var(--accent);font-weight:900}
+.admin-ticket-card[open]>summary:after {content:"−"}
+.admin-ticket-card .admin-ticket-preview {font-size:12px;color:var(--muted);min-width:0;flex:1 1 100%;overflow-wrap:anywhere}
+.admin-ticket-card .ticket-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.admin-ticket-category {margin:8px 0!important;padding:0!important;overflow:hidden}
+.admin-ticket-category>summary {cursor:pointer;padding:9px 11px;font-weight:700;list-style:none}
+.admin-ticket-category>summary::-webkit-details-marker {display:none}
+
+.support-ticket {padding:10px;margin:8px 0}
+.support-ticket .support-thread {margin-top:6px!important}
 </style>
 </head>
 
@@ -747,8 +778,22 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
   </div>
 
   <div class="panel" id="adminSupportPanel" hidden>
-    <h2>📨 Support-Anfragen</h2>
-    <div id="adminSupportList"><p class="muted">Lade Anfragen...</p></div>
+    <h2>📨 Support & Ticket-Postfach</h2>
+    <div class="ticket-search-wrap"><span aria-hidden="true">🔎</span><input type="search" id="adminTicketSearch" placeholder="Tickets suchen: E-Mail, Anliegen, Nachricht oder ID …" autocomplete="off"></div>
+    <p class="muted ticket-search-hint">Die Suche filtert offene, beantwortete und geschlossene Tickets.</p>
+    <details class="panel admin-ticket-section" id="adminOpenSection">
+      <summary>📥 Offene Anfragen <span class="ticket-count" id="adminOpenCount">0</span></summary>
+      <div class="admin-ticket-section-content" id="adminSupportList"><p class="muted">Lade Anfragen...</p></div>
+    </details>
+    <details class="panel admin-ticket-section" id="adminAnsweredSection">
+      <summary>📁 Beantwortete Tickets – Postfach <span class="ticket-count" id="adminAnsweredCount">0</span></summary>
+      <p class="muted">Nach Anliegen sortiert. Nutzer können hierauf weiter antworten, bis du das Ticket schließt.</p>
+      <div class="admin-ticket-section-content" id="adminAnsweredFolders"><p class="muted">Lade Postfach...</p></div>
+    </details>
+    <details class="panel admin-ticket-section" id="adminClosedSection">
+      <summary>🔒 Geschlossene Tickets <span class="ticket-count" id="adminClosedCount">0</span></summary>
+      <div class="admin-ticket-section-content" id="adminClosedTickets"><p class="muted">Lade Tickets...</p></div>
+    </details>
   </div>
 
   <div class="panel">
@@ -1933,55 +1978,124 @@ document.addEventListener("click",async e=>{
  }catch(err){notify("Präsentation: "+err.message);}finally{b.disabled=false;}
 });
 
-/* SUPPORT & POSTFACH */
+/* SUPPORT & POSTFACH – Tickets mit fortlaufendem Nachrichtenverlauf */
+const SUPPORT_CATEGORIES={
+  Problem:"⚠️ Problem melden",
+  Bewertung:"⭐ Bewertung abgeben",
+  Verbesserungsvorschlag:"💡 Verbesserungsvorschlag"
+};
+const isSupportAdmin=()=>String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+
+async function getSupportReplies(ticketIds){
+  if(!ticketIds.length)return [];
+  const {data,error}=await _supabase.from("support_replies").select("*").in("ticket_id",ticketIds).order("created_at",{ascending:true});
+  if(error)throw error;
+  return data||[];
+}
+function supportThreadHtml(ticket,replies,adminView=false){
+  const messages=[{sender_role:"user",sender_email:ticket.user_email,message:ticket.message,created_at:ticket.created_at},...(replies||[])];
+  if(!replies?.length&&ticket.admin_reply)messages.push({sender_role:"admin",sender_email:"Support",message:ticket.admin_reply,created_at:ticket.updated_at||ticket.created_at});
+  return `<div class="signal-card support-ticket" data-ticket="${esc(ticket.id)}">
+    <div class="row" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="ticket-tag">${esc(SUPPORT_CATEGORIES[ticket.category]||ticket.category||"Sonstige")}</span><small>${esc(ticket.user_email||"")}</small></div>
+    <div class="support-thread" style="margin-top:10px">${messages.map(m=>`<div class="admin-reply-box" style="margin:8px 0"><strong>${m.sender_role==="admin"?"🛡️ Support":"👤 Nutzer"}:</strong><p style="white-space:pre-wrap;margin:5px 0">${esc(m.message)}</p><small>${m.created_at?new Date(m.created_at).toLocaleString("de-DE"):""}</small></div>`).join("")}</div>
+    ${adminView?`<textarea id="reply_${esc(ticket.id)}" placeholder="Antwort schreiben..." rows="3"></textarea><div class="actions"><button type="button" class="good btn-admin-reply" data-id="${esc(ticket.id)}">Antwort senden</button>${ticket.status!=="closed"?`<button type="button" class="danger btn-close-ticket" data-id="${esc(ticket.id)}">Ticket schließen</button>`:""}</div>`:
+      (ticket.status!=="closed"?`<textarea id="user_reply_${esc(ticket.id)}" placeholder="Deine Antwort..." rows="3"></textarea><button type="button" class="primary btn-user-ticket-reply" data-id="${esc(ticket.id)}">Antwort senden</button>`:`<p class="muted">Dieses Ticket wurde geschlossen.</p>`)}
+  </div>`;
+}
 async function sendSupportMessage(){
   const category=$("supportCategory").value;
   const message=$("supportMessage").value.trim();
   if(!message)return notify("Bitte Nachricht eingeben.");
   try{
-    await _supabase.from("support_messages").insert([{user_id:currentUser.id, user_email:currentUser.email, category, message}]);
-    $("supportMessage").value="";
-    notify("Gesendet!");
-    loadUserInbox();
-    showPage("inbox");
+    const {error}=await _supabase.from("support_messages").insert([{user_id:currentUser.id,user_email:currentUser.email,category,message,status:"open"}]);
+    if(error)throw error;
+    $("supportMessage").value="";notify("Gesendet!");loadUserInbox();showPage("inbox");
   }catch(err){notify("Fehler: "+err.message);}
 }
-
 async function loadUserInbox(markAsRead=false){
   if(!currentUser)return;
   const container=$("userInboxList");
   try{
-    const {data}=await _supabase.from("support_messages").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
-    const unread=(data||[]).filter(m=>m.admin_reply&&!m.is_read).length;
-    $("inboxUnreadBadge").hidden=(unread===0);
-    $("inboxUnreadBadge").textContent=unread;
-    updateFriendNotificationDot();
-    if(markAsRead&&unread>0){
-      await _supabase.from("support_messages").update({is_read:true}).eq("user_id",currentUser.id).not("admin_reply","is",null);
-      $("inboxUnreadBadge").hidden=true;
-      updateFriendNotificationDot();
-    }
-    container.innerHTML=(data||[]).map(m=>`<div class="signal-card"><span class="ticket-tag">${esc(m.category)}</span><p>${esc(m.message)}</p>${m.admin_reply?`<div class="admin-reply-box"><strong>Antwort:</strong> ${esc(m.admin_reply)}</div>`:""}</div>`).join("");
-  }catch(err){}
+    const {data,error}=await _supabase.from("support_messages").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
+    if(error)throw error;
+    const tickets=data||[];const replies=await getSupportReplies(tickets.map(t=>t.id));
+    const unread=tickets.filter(t=>t.admin_reply&&!t.is_read).length;
+    $("inboxUnreadBadge").hidden=(unread===0);$("inboxUnreadBadge").textContent=unread;updateFriendNotificationDot();
+    if(markAsRead&&unread>0){await _supabase.from("support_messages").update({is_read:true}).eq("user_id",currentUser.id).not("admin_reply","is",null);$("inboxUnreadBadge").hidden=true;updateFriendNotificationDot();}
+    container.innerHTML=tickets.length?tickets.map(t=>{
+      const status=t.status|| (t.admin_reply?"answered":"open");
+      const label=status==="closed"?"🔒 Geschlossen":status==="answered"?"📨 Beantwortet":"🟡 Offen";
+      const replyList=replies.filter(r=>r.ticket_id===t.id);
+      const lastMessage=replyList.length?replyList[replyList.length-1].message:t.message;
+      const preview=String(lastMessage||"").replace(/\s+/g," ").slice(0,90);
+      return `<details class="panel ticket-compact"><summary><span class="ticket-summary-main"><strong>${esc(SUPPORT_CATEGORIES[t.category]||t.category||"Support")}</strong><span class="ticket-tag">${label}</span><span class="ticket-summary-email">${esc(new Date(t.created_at).toLocaleDateString("de-DE"))} · ${esc(preview)}${String(lastMessage||"").length>90?"…":""}</span></span></summary><div class="ticket-content">${supportThreadHtml(t,replyList,false)}</div></details>`;
+    }).join(""):'<p class="muted">Du hast noch keine Support-Anfragen.</p>';
+  }catch(err){container.innerHTML=`<p class="muted">Postfach konnte nicht geladen werden: ${esc(err.message)}</p>`;}
 }
-
+function adminTicketCardHtml(ticket,replies){
+  const list=replies.filter(r=>r.ticket_id===ticket.id);
+  const last=list.length?list[list.length-1].message:(ticket.admin_reply||ticket.message||"");
+  const preview=String(last).replace(/\s+/g," ").slice(0,110);
+  const date=ticket.created_at?new Date(ticket.created_at).toLocaleDateString("de-DE"):"";
+  const status=ticket.status||(ticket.admin_reply?"answered":"open");
+  const statusLabel=status==="closed"?"🔒 Geschlossen":status==="answered"?"📨 Beantwortet":"🟡 Offen";
+  return `<details class="panel admin-ticket-card"><summary><span class="ticket-tag">${esc(SUPPORT_CATEGORIES[ticket.category]||ticket.category||"Sonstige")}</span><span class="ticket-tag">${statusLabel}</span><strong>${esc(ticket.user_email||"Unbekannter Nutzer")}</strong><span class="admin-ticket-preview">${esc(date)} · ${esc(preview)}${String(last).length>110?"…":""}</span></summary><div class="ticket-content">${supportThreadHtml(ticket,list,true)}</div></details>`;
+}
 async function loadAdminSupport(){
-  const container=$("adminSupportList");
-  if(!container)return;
+  const container=$("adminSupportList");if(!container)return;
   try{
-    const {data}=await _supabase.from("support_messages").select("*").order("created_at",{ascending:false});
-    container.innerHTML=(data||[]).map(m=>`<div class="signal-card"><p><b>${esc(m.user_email)}</b>: ${esc(m.message)}</p><textarea id="reply_${esc(m.id)}" placeholder="Antwort...">${esc(m.admin_reply||"")}</textarea><button type="button" class="good btn-admin-reply" data-id="${esc(m.id)}">Senden</button></div>`).join("");
-  }catch(err){}
+    const {data,error}=_supabase.from?await _supabase.from("support_messages").select("*").order("created_at",{ascending:false}):{data:[],error:null};if(error)throw error;
+    const tickets=data||[];const replies=await getSupportReplies(tickets.map(t=>t.id));
+    const status=t=>t.status||(t.admin_reply?"answered":"open");
+    const query=String($("adminTicketSearch")?.value||"").trim().toLocaleLowerCase("de-DE");
+    const matches=t=>{
+      if(!query)return true;
+      const thread=replies.filter(r=>r.ticket_id===t.id).map(r=>r.message).join(" ");
+      return [t.id,t.user_email,t.category,t.message,t.admin_reply,thread].filter(Boolean).join(" ").toLocaleLowerCase("de-DE").includes(query);
+    };
+    const filtered=tickets.filter(matches);
+    const renderList=(list)=>list.length?list.map(t=>adminTicketCardHtml(t,replies)).join(""):'<p class="muted">Keine passenden Tickets gefunden.</p>';
+    const open=filtered.filter(t=>status(t)==="open");
+    container.innerHTML=renderList(open);
+    const answered=filtered.filter(t=>status(t)==="answered");
+    const folder=$("adminAnsweredFolders");
+    folder.innerHTML=answered.length?Object.keys(SUPPORT_CATEGORIES).map(cat=>{
+      const list=answered.filter(t=>t.category===cat);if(!list.length)return "";
+      return `<details class="panel admin-ticket-category"><summary>📂 ${esc(SUPPORT_CATEGORIES[cat])} <span class="ticket-count">${list.length}</span></summary><div class="admin-ticket-section-content">${renderList(list)}</div></details>`;
+    }).join(""):'<p class="muted">Keine passenden beantworteten Tickets im Postfach.</p>';
+    const closed=filtered.filter(t=>status(t)==="closed");
+    $("adminClosedTickets").innerHTML=renderList(closed);
+    $("adminOpenCount").textContent=open.length;
+    $("adminAnsweredCount").textContent=answered.length;
+    $("adminClosedCount").textContent=closed.length;
+  }catch(err){container.innerHTML=`<p class="muted">Support konnte nicht geladen werden: ${esc(err.message)}</p>`;}
 }
 
-document.addEventListener("click", async e=>{
-  const btn=e.target.closest(".btn-admin-reply");
-  if(btn){
-    const text=$("reply_"+btn.dataset.id).value.trim();
-    if(text)await _supabase.from("support_messages").update({admin_reply:text, is_read:false}).eq("id",btn.dataset.id);
-    notify("Antwort gesendet!");
-    loadAdminSupport();
-  }
+$("adminTicketSearch")?.addEventListener("input",()=>loadAdminSupport());
+document.addEventListener("click",async e=>{
+  const adminReply=e.target.closest(".btn-admin-reply");
+  const userReply=e.target.closest(".btn-user-ticket-reply");
+  const closeTicket=e.target.closest(".btn-close-ticket");
+  try{
+    if(adminReply){
+      if(!isSupportAdmin())return;
+      const id=adminReply.dataset.id,text=$("reply_"+id).value.trim();if(!text)return notify("Bitte Antwort eingeben.");
+      const {error}=await _supabase.from("support_replies").insert([{ticket_id:id,sender_id:currentUser.id,sender_email:currentUser.email,sender_role:"admin",message:text}]);if(error)throw error;
+      const {error:updateError}=await _supabase.from("support_messages").update({admin_reply:text,is_read:false,status:"answered"}).eq("id",id);if(updateError)throw updateError;
+      notify("Antwort gesendet. Das Ticket liegt jetzt im passenden Postfachordner.");await loadAdminSupport();
+    }else if(userReply){
+      const id=userReply.dataset.id,text=$("user_reply_"+id).value.trim();if(!text)return notify("Bitte Antwort eingeben.");
+      const {data:ticket,error:readError}=await _supabase.from("support_messages").select("status").eq("id",id).single();if(readError)throw readError;if(ticket.status==="closed")return notify("Dieses Ticket ist geschlossen.");
+      const {error}=await _supabase.from("support_replies").insert([{ticket_id:id,sender_id:currentUser.id,sender_email:currentUser.email,sender_role:"user",message:text}]);if(error)throw error;
+      const {error:updateError}=await _supabase.from("support_messages").update({status:"open",is_read:false}).eq("id",id);if(updateError)throw updateError;
+      notify("Antwort gesendet. Das Ticket ist wieder offen.");await loadUserInbox();
+    }else if(closeTicket){
+      if(!isSupportAdmin())return;
+      if(!confirm("Ticket wirklich schließen? Der Nutzer kann danach nicht mehr antworten."))return;
+      const {error}=await _supabase.from("support_messages").update({status:"closed",closed_at:new Date().toISOString()}).eq("id",closeTicket.dataset.id);if(error)throw error;
+      notify("Ticket geschlossen.");await loadAdminSupport();
+    }
+  }catch(err){notify("Fehler: "+err.message);}
 });
 
 /* GRUNDLEGENDE SIGNAL-VERWALTUNG */
