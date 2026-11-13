@@ -322,6 +322,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
   <button type="button" class="sidebar-link" data-page="friends">👥 Freunde <span id="friendRequestBadge" class="pill-count" hidden>0</span></button>
   <button type="button" class="sidebar-link" data-page="friendChat">💬 Freundesnachrichten <span id="friendChatBadge" class="pill-count" hidden>0</span></button>
   <button type="button" class="sidebar-link" data-page="studyGroups">👥 Lerngruppen</button>
+  <button type="button" class="sidebar-link" data-page="flashcards">🗂️ Karteikarten</button>
   <button type="button" class="sidebar-link" data-page="courses">🎓 Kurse</button>
   <button type="button" class="sidebar-link" data-page="support">💬 Support</button>
   <button type="button" class="sidebar-link" data-page="inbox">
@@ -847,6 +848,50 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <input type="file" id="importFile" accept=".json,application/json" hidden>
   </div>
 </section>
+<!-- EIGENSTÄNDIGES KARTEIKARTEN-LERNSYSTEM -->
+<section id="flashcards" class="page" hidden>
+  <div class="panel">
+    <h2>🗂️ Karteikarten lernen</h2>
+    <p class="muted">Erstelle private Kartensätze, lerne sie und teile sie gezielt per E-Mail – ohne öffentliche Sammlung.</p>
+    <label for="fcSetTitle">Name des Kartensatzes</label>
+    <input id="fcSetTitle" maxlength="100" placeholder="z. B. Grundlagen Elektrotechnik">
+    <label for="fcSetDescription">Beschreibung (optional)</label>
+    <textarea id="fcSetDescription" maxlength="500" rows="2" placeholder="Worum geht es in diesem Kartensatz?"></textarea>
+    <button type="button" class="primary" id="fcCreateSet">+ Kartensatz erstellen</button>
+  </div>
+  <div class="panel">
+    <h3>Meine Kartensätze</h3>
+    <div id="fcMySets"><p class="muted">Lade Kartensätze …</p></div>
+  </div>
+  <div class="panel">
+    <h3>📨 Mit mir geteilte Kartensätze</h3>
+    <div id="fcSharedSets"><p class="muted">Lade Freigaben …</p></div>
+  </div>
+  <div class="panel" id="fcEditorPanel" hidden>
+    <h3 id="fcEditorTitle">Kartensatz bearbeiten</h3>
+    <input type="hidden" id="fcEditingSetId">
+    <label for="fcQuestion">Vorderseite / Frage</label>
+    <textarea id="fcQuestion" rows="2" maxlength="2000" placeholder="Frage oder Begriff"></textarea>
+    <label for="fcAnswer">Rückseite / Antwort</label>
+    <textarea id="fcAnswer" rows="3" maxlength="5000" placeholder="Antwort oder Erklärung"></textarea>
+    <label for="fcImageUrl">Bild-URL (optional)</label>
+    <input id="fcImageUrl" type="url" placeholder="https://…">
+    <div class="actions"><button type="button" class="primary" id="fcAddCard">Karte hinzufügen</button><button type="button" id="fcCancelEdit">Schließen</button></div>
+    <div id="fcCardsList"></div>
+  </div>
+  <div class="panel" id="fcStudyPanel" hidden>
+    <h3 id="fcStudyTitle">Lernen</h3>
+    <div id="fcStudyProgress" class="muted"></div>
+    <div id="fcStudyCard" class="signal-card" style="min-height:190px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:12px;cursor:pointer" role="button" tabindex="0">
+      <div id="fcStudyFace" style="font-size:20px;font-weight:700;white-space:pre-wrap"></div>
+      <img id="fcStudyImage" alt="Karteikartenbild" hidden style="max-width:100%;max-height:220px;object-fit:contain;border-radius:10px">
+      <small id="fcStudyHint" class="muted">Tippen zum Umdrehen</small>
+    </div>
+    <div class="actions" style="margin-top:12px"><button type="button" id="fcFlip">Antwort aufdecken</button><button type="button" class="danger" id="fcAgain">Noch nicht gewusst</button><button type="button" class="good" id="fcKnown">Gewusst</button></div>
+    <button type="button" id="fcStopStudy" style="width:100%;margin-top:8px">Lernen beenden</button>
+  </div>
+</section>
+
 <!-- Dialog zum Teilen mit E-Mail-Vorschlägen bestätigter Freunde -->
 <dialog id="shareDialog" style="width:min(95vw,470px);background:#1b2735;color:#f3f6fa;border:1px solid #48a6ff;border-radius:14px;padding:18px">
   <h3>📨 Signal(e) teilen</h3>
@@ -2448,6 +2493,7 @@ function renderRoleTutorial(){
   html+=step("💾 Datensicherung","Mit „Daten exportieren“ lädst du deine Signale als JSON-Sicherung herunter. Über „Daten importieren“ kannst du eine Sicherung wieder einlesen. Ein erneuter Import kann Duplikate erzeugen.");
   html+=step("👥 Freunde und Lerngruppen","Im Seitenmenü kannst du Freunde per E-Mail einladen und Anfragen annehmen. Neue Anfragen erscheinen mit einer Zahl bei Freunde. Unter Lerngruppen kannst du selbst Gruppen erstellen und Mitglieder einladen.");
   html+=step("💬 Freundesnachrichten","Unter Freundesnachrichten schreibst du privat mit bestätigten Freunden. Neue Nachrichten erscheinen mit einer Zahl. Das Support- und Trainerpostfach bleibt getrennt.");
+  html+=step("🗂️ Karteikarten","Erstelle private Karteikartensätze, lerne sie und teile sie gezielt per E-Mail.");
   html+=step("📨 Signale teilen","Beim Teilen eines Signals kannst du die E-Mail-Adresse eingeben. Bereits beim Tippen erscheinen Vorschläge aus deinen bestätigten Freunden.");
   html+=step("🎓 An Kursen teilnehmen","Im Menü „Kurse“ findest du Kurse, denen du zugeordnet bist. Dort kannst du Lernmaterialien und Aufgaben ansehen und Hausaufgaben abgeben, sofern diese angeboten werden.");
   html+=step("📬 Nachrichten, geteilte Signale und Support","Im Postfach liest du Nachrichten. Unter „Geteilte Signale“ kannst du empfangene Signale übernehmen. Im Support-Bereich kannst du Fragen, Probleme und Vorschläge senden.");
@@ -2466,9 +2512,115 @@ function renderRoleTutorial(){
   content.innerHTML=html;
 }
 
+/* KARTEIKARTEN: private Sets, gezielte E-Mail-Freigabe */
+let fcSets=[],fcCards=[],fcCurrentSet=null,fcStudyCards=[],fcStudyIndex=0,fcRevealed=false;
+const fcEsc=v=>esc(v??"");
+async function fcLoadAll(){
+ if(!currentUser)return;
+ $("fcMySets").innerHTML='<p class="muted">Lade …</p>';
+ try{
+  const [setsRes,sharedRes]=await Promise.all([
+   _supabase.from("flashcard_sets").select("*").eq("user_id",currentUser.id).order("updated_at",{ascending:false}),
+   _supabase.from("shared_flashcard_sets").select("*").eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending").order("created_at",{ascending:false})
+  ]);
+  if(setsRes.error)throw setsRes.error;if(sharedRes.error)throw sharedRes.error;
+  fcSets=setsRes.data||[];
+  $("fcMySets").innerHTML=fcSets.map(x=>`<div class="signal-card"><h3>${fcEsc(x.title)}</h3><p class="muted">${fcEsc(x.description||"")}</p><div class="actions"><button class="primary fc-edit" data-id="${x.id}">Bearbeiten</button><button class="fc-study" data-id="${x.id}">Lernen</button><button class="fc-share" data-id="${x.id}">Per E-Mail teilen</button><button class="danger fc-delete-set" data-id="${x.id}">Löschen</button></div></div>`).join("")||'<p class="muted">Noch keine Kartensätze erstellt.</p>';
+  $("fcSharedSets").innerHTML=(sharedRes.data||[]).map(x=>`<div class="signal-card"><h3>${fcEsc(x.set_data?.title||"Geteilter Kartensatz")}</h3><p class="muted">Von: ${fcEsc(x.sender_email)}</p><div class="actions"><button class="good fc-accept" data-id="${x.id}">In meine Sammlung übernehmen</button><button class="danger fc-dismiss" data-id="${x.id}">Entfernen</button></div></div>`).join("")||'<p class="muted">Keine offenen Freigaben.</p>';
+ }catch(e){$("fcMySets").textContent="Karteikarten konnten nicht geladen werden: "+e.message;}
+}
+async function fcCreateSet(){
+ const title=$("fcSetTitle").value.trim(),description=$("fcSetDescription").value.trim();
+ if(!title)return notify("Bitte einen Namen für den Kartensatz eingeben.");
+ const {data,error}=await _supabase.from("flashcard_sets").insert({user_id:currentUser.id,title,description}).select().single();
+ if(error)return notify("Kartensatz konnte nicht erstellt werden: "+error.message);
+ $("fcSetTitle").value="";$("fcSetDescription").value="";await fcLoadAll();fcOpenEditor(data.id);
+}
+async function fcOpenEditor(id){
+ const set=fcSets.find(x=>String(x.id)===String(id));if(!set)return;
+ fcCurrentSet=set;$("fcEditingSetId").value=id;$("fcEditorTitle").textContent="Bearbeiten: "+set.title;$("fcEditorPanel").hidden=false;$("fcStudyPanel").hidden=true;await fcLoadCards();$("fcEditorPanel").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function fcLoadCards(){
+ if(!fcCurrentSet)return;
+ const {data,error}=await _supabase.from("flashcards").select("*").eq("set_id",fcCurrentSet.id).order("created_at");
+ if(error)return notify("Karten konnten nicht geladen werden: "+error.message);
+ fcCards=data||[];
+ $("fcCardsList").innerHTML=fcCards.map((c,i)=>`<div class="signal-card"><strong>${i+1}. ${fcEsc(c.question)}</strong><p>${fcEsc(c.answer)}</p>${c.image_url?`<img src="${fcEsc(c.image_url)}" alt="Kartenbild" style="max-width:100%;max-height:130px">`:""}<button class="danger fc-delete-card" data-id="${c.id}">Karte löschen</button></div>`).join("")||'<p class="muted">Noch keine Karten in diesem Satz.</p>';
+}
+async function fcAddCard(){
+ if(!fcCurrentSet)return;
+ const question=$("fcQuestion").value.trim(),answer=$("fcAnswer").value.trim(),image_url=$("fcImageUrl").value.trim();
+ if(!question||!answer)return notify("Bitte Vorder- und Rückseite ausfüllen.");
+ if(image_url&&!/^https:\/\//i.test(image_url))return notify("Bitte eine sichere HTTPS-Bildadresse verwenden.");
+ const {error}=await _supabase.from("flashcards").insert({set_id:fcCurrentSet.id,user_id:currentUser.id,question,answer,image_url:image_url||null});
+ if(error)return notify("Karte konnte nicht gespeichert werden: "+error.message);
+ $("fcQuestion").value="";$("fcAnswer").value="";$("fcImageUrl").value="";await fcLoadCards();notify("Karte gespeichert.");
+}
+async function fcStartStudy(id){
+ const set=fcSets.find(x=>String(x.id)===String(id));if(!set)return;
+ const {data,error}=await _supabase.from("flashcards").select("*").eq("set_id",id).order("created_at");
+ if(error)return notify("Lernen konnte nicht gestartet werden: "+error.message);
+ if(!data?.length)return notify("Dieser Kartensatz enthält noch keine Karten.");
+ fcCurrentSet=set;fcStudyCards=data;fcStudyIndex=0;fcRevealed=false;$("fcEditorPanel").hidden=true;$("fcStudyPanel").hidden=false;$("fcStudyTitle").textContent=set.title;fcRenderStudy();$("fcStudyPanel").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function fcRenderStudy(){
+ if(fcStudyIndex>=fcStudyCards.length){$("fcStudyFace").textContent="Geschafft! Du hast alle Karten durchgesehen.";$("fcStudyImage").hidden=true;$("fcStudyHint").textContent="";$("fcStudyProgress").textContent=fcStudyCards.length+" Karten gelernt";$("fcAgain").hidden=true;$("fcKnown").hidden=true;return;}
+ const c=fcStudyCards[fcStudyIndex];$("fcStudyFace").textContent=fcRevealed?c.answer:c.question;$("fcStudyImage").src=fcRevealed?(c.image_url||""):"";$("fcStudyImage").hidden=!(fcRevealed&&c.image_url);$("fcStudyHint").textContent=fcRevealed?"Rückseite / Antwort":"Vorderseite / Frage – zum Umdrehen tippen";$("fcStudyProgress").textContent=`Karte ${fcStudyIndex+1} von ${fcStudyCards.length}`;$("fcFlip").textContent=fcRevealed?"Frage anzeigen":"Antwort aufdecken";$("fcAgain").hidden=!fcRevealed;$("fcKnown").hidden=!fcRevealed;
+}
+function fcFlip(){fcRevealed=!fcRevealed;fcRenderStudy();}
+async function fcRate(known){
+ if(!fcRevealed)return notify("Decke zuerst die Antwort auf.");
+ const c=fcStudyCards[fcStudyIndex];
+ const {data:old,error:readError}=await _supabase.from("flashcard_progress").select("known_count,again_count").eq("user_id",currentUser.id).eq("card_id",c.id).maybeSingle();
+ if(readError)return notify("Lernfortschritt konnte nicht gespeichert werden: "+readError.message);
+ const row={user_id:currentUser.id,card_id:c.id,known_count:(old?.known_count||0)+(known?1:0),again_count:(old?.again_count||0)+(known?0:1),last_seen_at:new Date().toISOString()};
+ const {error}=await _supabase.from("flashcard_progress").upsert(row,{onConflict:"user_id,card_id"});
+ if(error)return notify("Lernfortschritt konnte nicht gespeichert werden: "+error.message);
+ if(!known)fcStudyCards.push(c);fcStudyIndex++;fcRevealed=false;fcRenderStudy();
+}
+async function fcShare(id){
+ const set=fcSets.find(x=>String(x.id)===String(id));if(!set)return;
+ const email=prompt("An welche E-Mail-Adresse soll der Kartensatz geteilt werden?");if(email===null)return;
+ const recipient_email=email.trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient_email))return notify("Bitte eine gültige E-Mail-Adresse eingeben.");
+ const {data:cards,error:cardsError}=await _supabase.from("flashcards").select("question,answer,image_url").eq("set_id",id).order("created_at");if(cardsError)return notify(cardsError.message);if(!cards?.length)return notify("Ein leerer Kartensatz kann nicht geteilt werden.");
+ const {error}=await _supabase.from("shared_flashcard_sets").insert({sender_id:currentUser.id,sender_email:currentUser.email.toLowerCase(),recipient_email,set_data:{title:set.title,description:set.description||"",cards}});
+ if(error)return notify("Teilen fehlgeschlagen: "+error.message);notify("Kartensatz wurde per E-Mail-Adresse freigegeben.");
+}
+async function fcAccept(id){
+ const {data:share,error}=await _supabase.from("shared_flashcard_sets").select("*").eq("id",id).eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending").single();if(error)return notify("Freigabe nicht gefunden: "+error.message);
+ const payload=share.set_data;if(!payload||!Array.isArray(payload.cards))return notify("Der geteilte Kartensatz ist beschädigt.");
+ const {data:set,error:setError}=await _supabase.from("flashcard_sets").insert({user_id:currentUser.id,title:payload.title||"Geteilter Kartensatz",description:payload.description||""}).select().single();if(setError)return notify(setError.message);
+ const rows=payload.cards.map(c=>({set_id:set.id,user_id:currentUser.id,question:c.question,answer:c.answer,image_url:c.image_url||null}));
+ const {error:insertError}=await _supabase.from("flashcards").insert(rows);if(insertError){await _supabase.from("flashcard_sets").delete().eq("id",set.id);return notify("Karten konnten nicht übernommen werden: "+insertError.message);}
+ const {error:updateError}=await _supabase.from("shared_flashcard_sets").update({status:"accepted"}).eq("id",id).eq("recipient_email",currentUser.email.toLowerCase());if(updateError)return notify("Übernommen, aber Freigabe-Status konnte nicht aktualisiert werden: "+updateError.message);
+ notify("Kartensatz in deine Sammlung übernommen.");await fcLoadAll();
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("button");if(!b)return;
+ try{
+  if(b.id==="fcCreateSet")await fcCreateSet();
+  else if(b.id==="fcAddCard")await fcAddCard();
+  else if(b.classList.contains("fc-edit"))await fcOpenEditor(b.dataset.id);
+  else if(b.classList.contains("fc-study"))await fcStartStudy(b.dataset.id);
+  else if(b.classList.contains("fc-share"))await fcShare(b.dataset.id);
+  else if(b.classList.contains("fc-delete-card")){if(confirm("Karte wirklich löschen?")){const {error}=await _supabase.from("flashcards").delete().eq("id",b.dataset.id).eq("user_id",currentUser.id);if(error)throw error;await fcLoadCards();}}
+  else if(b.classList.contains("fc-delete-set")){if(confirm("Kartensatz und alle Karten wirklich löschen?")){const {error}=await _supabase.from("flashcard_sets").delete().eq("id",b.dataset.id).eq("user_id",currentUser.id);if(error)throw error;$("fcEditorPanel").hidden=true;await fcLoadAll();}}
+  else if(b.classList.contains("fc-accept"))await fcAccept(b.dataset.id);
+  else if(b.classList.contains("fc-dismiss")){const {error}=await _supabase.from("shared_flashcard_sets").delete().eq("id",b.dataset.id).eq("recipient_email",currentUser.email.toLowerCase());if(error)throw error;await fcLoadAll();}
+ }catch(err){notify("Aktion fehlgeschlagen: "+err.message);}
+});
+$("fcFlip").addEventListener("click",fcFlip);
+$("fcStudyCard").addEventListener("click",fcFlip);
+$("fcStudyCard").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fcFlip();}});
+$("fcAgain").addEventListener("click",()=>fcRate(false));
+$("fcKnown").addEventListener("click",()=>fcRate(true));
+$("fcStopStudy").addEventListener("click",()=>{$("fcStudyPanel").hidden=true;});
+$("fcCancelEdit").addEventListener("click",()=>{$("fcEditorPanel").hidden=true;});
+
+
 /* NAVIGATION */
 function showPage(page){
-  ["learn","exam","stats","manage","tutorial","support","inbox","shared","friends","friendChat","studyGroups","groupDetail","courses","courseDetail"].forEach(id=>{
+  ["learn","exam","stats","manage","tutorial","support","inbox","shared","friends","friendChat","studyGroups","groupDetail","courses","courseDetail","flashcards"].forEach(id=>{
     const v=(id===page);
     const el=$(id);
     if(el){el.hidden=!v; el.style.display=v?"block":"none";}
@@ -2480,6 +2632,7 @@ function showPage(page){
   if(page==="friendChat"){loadFriends().then(loadFriendChat);}
   if(page==="studyGroups")loadStudyGroups();
   if(page==="courses")loadCourses();
+  if(page==="flashcards")fcLoadAll();
 
   if(page==="inbox")loadUserInbox(true);
   if(page==="shared")loadSharedSignals();
