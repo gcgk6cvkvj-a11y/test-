@@ -1229,17 +1229,21 @@ document.addEventListener("click", async e=>{
 });
 
 
-/* ADMIN: Trainerübersicht, Kursverwaltung und getrennte Upload-Sperren */
+/* ADMIN: Trainerübersicht, Trainerstatus, Kursverwaltung und getrennte Upload-Sperren */
 let adminTrainerCourseCache=[];
 async function loadAdminTrainerOverview(){
  if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase())return;
  const box=$("adminTrainerOverviewList");if(!box)return;
  box.textContent="Lade Trainer …";
  try{
-  const {data:courses,error}=await _supabase.from("courses").select("id,name,trainer_email,created_at").order("name");
-  if(error)throw error;
-  const trainerEmails=[...new Set((courses||[]).map(c=>String(c.trainer_email||"").trim()).filter(Boolean))];
-  adminTrainerCourseCache=trainerEmails.map(email=>({email,courses:(courses||[]).filter(c=>String(c.trainer_email).toLowerCase()===email.toLowerCase())}));
+  const [{data:courses,error:courseError},{data:profiles,error:profileError}]=await Promise.all([
+   _supabase.from("courses").select("id,name,trainer_email,created_at").order("name"),
+   _supabase.from("user_profiles").select("id,email,is_trainer").eq("is_trainer",true)
+  ]);
+  if(courseError)throw courseError;if(profileError)throw profileError;
+  const profileRows=profiles||[];
+  const trainerEmails=[...new Set([...profileRows.map(p=>String(p.email||"").trim()),...(courses||[]).map(c=>String(c.trainer_email||"").trim())].filter(Boolean))];
+  adminTrainerCourseCache=trainerEmails.map(email=>({profile:profileRows.find(p=>String(p.email||"").toLowerCase()===email.toLowerCase())||null,email,courses:(courses||[]).filter(c=>String(c.trainer_email).toLowerCase()===email.toLowerCase())}));
   renderAdminTrainerOverview();
  }catch(err){box.textContent="Trainerübersicht konnte nicht geladen werden: "+err.message;}
 }
@@ -1247,7 +1251,15 @@ function renderAdminTrainerOverview(){
  const box=$("adminTrainerOverviewList");if(!box)return;
  const q=String($("adminTrainerSearch")?.value||"").trim().toLowerCase();
  const rows=adminTrainerCourseCache.filter(t=>String(t.email||"").toLowerCase().includes(q)||t.courses.some(c=>String(c.name||"").toLowerCase().includes(q)));
- box.innerHTML=rows.map(t=>`<details class="signal-card" style="margin:8px 0"><summary style="cursor:pointer"><b>${esc(t.email||"Trainer ohne E-Mail")}</b> <span class="muted">· ${t.courses.length} Kurs(e)</span></summary><div style="padding-top:10px">${t.courses.map(c=>`<div class="signal-card"><b>${esc(c.name)}</b><p class="muted">${new Date(c.created_at).toLocaleDateString("de-DE")}</p><button type="button" class="primary admin-open-trainer-course" data-id="${esc(c.id)}">Kurs öffnen und verwalten</button></div>`).join("")||"<p class='muted'>Dieser Trainer verwaltet aktuell keine eigenen Kurse.</p>"}</div></details>`).join("")||"<p class='muted'>Keine passenden Trainer gefunden.</p>";
+ box.innerHTML=rows.map(t=>`<details class="signal-card" style="margin:8px 0"><summary style="cursor:pointer"><b>${esc(t.email||"Trainer ohne E-Mail")}</b> <span class="muted">· ${t.courses.length} Kurs(e)</span></summary><div style="padding-top:10px"><p class="muted">Trainerstatus: ${t.profile?"aktiv":"Profilstatus nicht gefunden"}</p>${t.profile?`<button type="button" class="danger admin-revoke-trainer" data-id="${esc(t.profile.id)}" data-email="${esc(t.email)}">Trainerstatus entfernen</button>`:""}${t.courses.map(c=>`<div class="signal-card"><b>${esc(c.name)}</b><p class="muted">${new Date(c.created_at).toLocaleDateString("de-DE")}</p><button type="button" class="primary admin-open-trainer-course" data-id="${esc(c.id)}">Kurs öffnen und verwalten</button></div>`).join("")||"<p class='muted'>Dieser Trainer verwaltet aktuell keine eigenen Kurse.</p>"}</div></details>`).join("")||"<p class='muted'>Keine passenden Trainer gefunden.</p>";
+}
+async function adminRevokeTrainer(profileId,email){
+ if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase())throw new Error("Keine Admin-Berechtigung.");
+ if(!confirm(`Soll der Trainerstatus für ${email} wirklich entfernt werden? Die bestehenden Kurse bleiben erhalten.`))return;
+ const {error}=await _supabase.from("user_profiles").update({is_trainer:false,trainer_requested:false}).eq("id",profileId);
+ if(error)throw error;
+ notify("Trainerstatus wurde entfernt. Bestehende Kurse bleiben erhalten.");
+ await loadAdminTrainerOverview();
 }
 async function adminLoadCourseManagement(courseId){
  const {data,error}=await _supabase.from("course_upload_controls").select("*").eq("course_id",courseId).maybeSingle();
@@ -1271,10 +1283,12 @@ async function adminRenderCourseItems(courseId){
 document.addEventListener("input",e=>{if(e.target?.id==="adminTrainerSearch")renderAdminTrainerOverview();});
 document.addEventListener("click",async e=>{
  const open=e.target.closest(".admin-open-trainer-course");
+ const revoke=e.target.closest(".admin-revoke-trainer");
  const delP=e.target.closest(".admin-delete-presentation");
  const delM=e.target.closest(".admin-delete-course-material");
  if(open){activeCourseId=open.dataset.id;await openCourse(activeCourseId);return;}
  try{
+  if(revoke){await adminRevokeTrainer(revoke.dataset.id,revoke.dataset.email);return;}
   if(delP){
    if(!confirm("Diese Präsentation für alle Kursteilnehmer löschen?"))return;
    const {data:r,error}=await _supabase.from("course_presentations").select("storage_path").eq("id",delP.dataset.id).single();if(error)throw error;
