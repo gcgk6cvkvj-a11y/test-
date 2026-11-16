@@ -3006,8 +3006,17 @@ function nextLearn(){
 }
 
 function compareLearningText(expected,actual){
+  // Zeilenumbrüche und Absatzwechsel sind nur Formatierung und dürfen
+  // die inhaltliche Bewertung nicht beeinflussen.
   const clean=v=>String(v||"").toLocaleLowerCase("de-DE")
-    .normalize("NFC").replace(/[„“”]/g,'"').replace(/[’‘]/g,"'")
+    .normalize("NFC")
+    .replace(/\u00ad/g,"")                 // weicher Trennstrich
+    .replace(/[\u200b-\u200d\ufeff]/g,"") // unsichtbare Copy/Paste-Zeichen
+    .replace(/\r\n?/g,"\n")
+    .replace(/[\u2028\u2029]/g,"\n")
+    .replace(/[„“”]/g,'"').replace(/[’‘]/g,"'")
+    .replace(/[\t\f\v ]+/g," ")
+    .replace(/ *\n+ */g," ")              // ein oder mehrere Absätze = Leerzeichen
     .replace(/\s+/g," ").trim();
   const a=clean(expected),b=clean(actual);
   if(a===b)return {accepted:true,kind:"exact"};
