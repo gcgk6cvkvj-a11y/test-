@@ -835,8 +835,8 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <input id="longName" placeholder="z. B. Trapeztafel">
     <label for="meaning">Bedeutung</label>
     <textarea id="meaning" placeholder="Vollständige Bedeutung..."></textarea>
-    <label for="category">Kategorie</label>
-    <select id="category"></select>
+    <label>Kategorien (mehrere auswählbar)</label>
+    <div id="signalCategoryChoices" class="category-grid" style="margin:6px 0 14px;"></div>
     <label for="regelwerk">Regelwerk (optional)</label>
     <select id="regelwerk">
       <option value="">Nicht zugeordnet</option>
@@ -985,6 +985,28 @@ let activeCourseId=null;
 
 const BASE_CATEGORIES=["Lf","Bü","Ne","Hp","Vr","Ks","Hl","Sh","Ra","Zs","El","So","Wn","Zp","Zg","Ts","Mastschilder","Sonstige"];
 const CATEGORY_LABELS={"Lf":"Lf – Langsamfahrsignale","Bü":"Bü – Bahnübergangssignale","Ne":"Ne – Nebensignale","Hp":"Hp – Hauptsignale","Vr":"Vr – Vorsignale","Ks":"Ks – Kombinationssignale","Hl":"Hl – Hl-Signale","Sh":"Sh – Schutzsignale","Ra":"Ra – Rangiersignale","Zs":"Zs – Zusatzsignale","El":"El – Fahrleitungssignale","So":"So – Sonstige Signale","Wn":"Wn – Weichensignale","Zp":"Zp – Zugpersonalsignale","Zg":"Zg – Zugbegleitersignale","Ts":"Ts – Türen- und sonstige Betriebssignale","Mastschilder":"Mastschilder","Sonstige":"Sonstige"};
+function getSignalCategories(signalOrValue){
+  const raw=typeof signalOrValue==="string"?signalOrValue:(signalOrValue?.category||"");
+  if(!raw)return ["Sonstige"];
+  try{
+    const parsed=JSON.parse(raw);
+    if(Array.isArray(parsed))return [...new Set(parsed.map(v=>String(v).trim()).filter(Boolean))];
+  }catch(_){ }
+  return [String(raw).trim()||"Sonstige"];
+}
+function allKnownSignalCategories(){
+  return [...new Set([...BASE_CATEGORIES,...signals.flatMap(s=>getSignalCategories(s))])];
+}
+function renderSignalCategoryChoices(selected=[]){
+  const chosen=new Set(selected);
+  $("signalCategoryChoices").innerHTML=allKnownSignalCategories().map(c=>
+    `<label class="category-option"><input type="checkbox" value="${esc(c)}" ${chosen.has(c)?"checked":""}><span>${esc(CATEGORY_LABELS[c]||c)}</span></label>`
+  ).join("");
+}
+function selectedSignalFormCategories(){
+  return [...$("signalCategoryChoices").querySelectorAll('input[type="checkbox"]:checked')].map(el=>el.value);
+}
+
 
 let selectedLearnCategories=new Set(BASE_CATEGORIES);
 let selectedExamCategories=new Set(BASE_CATEGORIES);
@@ -2210,7 +2232,9 @@ async function saveSignal(){
   const short=$("shortName").value.trim();
   const long=$("longName").value.trim();
   const meaning=$("meaning").value.trim();
-  const category=$("category").value||"Sonstige";
+  const categories=selectedSignalFormCategories();
+  if(!categories.length)return notify("Bitte mindestens eine Kategorie auswählen.");
+  const category=JSON.stringify(categories);
   const regelwerk=$("regelwerk").value||null;
   if(!short||!long||!meaning)return notify("Bitte alle drei Textfelder ausfüllen.");
   const previous=id?signals.find(s=>String(s.id)===String(id)):null;
@@ -2242,11 +2266,7 @@ function editSignal(id){
   $("shortName").value=signal.short||"";
   $("longName").value=signal.long||"";
   $("meaning").value=signal.meaning||"";
-  const category=$("category");
-  if(signal.category&&!Array.from(category.options).some(o=>o.value===signal.category)){
-    category.add(new Option(signal.category,signal.category));
-  }
-  category.value=signal.category||"Sonstige";
+  renderSignalCategoryChoices(getSignalCategories(signal));
   $("regelwerk").value=signal.regelwerk||"";
   $("imageUrl").value=signal.image?.startsWith("data:")?"":(signal.image||"");
   tempImageBase64="";
@@ -2268,6 +2288,7 @@ async function deleteSignal(id){
 function clearForm(){
   ["editId","shortName","longName","meaning","imageUrl","regelwerk"].forEach(id=>{if($(id))$(id).value="";});
   tempImageBase64="";
+  renderSignalCategoryChoices([]);
   $("imageFile").value="";
   $("cameraFile").value="";
   $("formTitle").textContent="Signal hinzufügen";
@@ -2277,7 +2298,7 @@ function clearForm(){
 
 function visibleSignals(){
   const term=$("searchSignals").value.trim().toLocaleLowerCase("de-DE");
-  return signals.filter(s=>[s.short,s.long,s.meaning,s.category]
+  return signals.filter(s=>[s.short,s.long,s.meaning,...getSignalCategories(s)]
     .some(v=>String(v||"").toLocaleLowerCase("de-DE").includes(term)));
 }
 
@@ -2307,7 +2328,7 @@ function renderList(){
         <span>Dieses Signal auswählen</span>
       </label>
       <h3>${esc(s.short)} – ${esc(s.long)}</h3>
-      <span class="ticket-tag">${esc(CATEGORY_LABELS[s.category]||s.category||"Sonstige")}</span>
+      ${getSignalCategories(s).map(c=>`<span class="ticket-tag">${esc(CATEGORY_LABELS[c]||c)}</span>`).join(" ")}
       <span class="ticket-tag">${s.regelwerk==="DS301"?"DS 301":s.regelwerk==="DV301"?"DV 301":"Nicht zugeordnet"}</span>
       <p>${esc(s.meaning)}</p>
       <div class="actions">
@@ -2697,7 +2718,7 @@ function exportSignalData(){
   button.disabled=true;
   try{
     const data={format:"byarmando-signals",version:1,exported_at:new Date().toISOString(),signals:signals.map(s=>({
-      short:s.short||"",long:s.long||"",meaning:s.meaning||"",category:s.category||"Sonstige",regelwerk:s.regelwerk||null,image:s.image||""
+      short:s.short||"",long:s.long||"",meaning:s.meaning||"",category:getSignalCategories(s),regelwerk:s.regelwerk||null,image:s.image||""
     }))};
     const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
     const url=URL.createObjectURL(blob);
@@ -2765,7 +2786,7 @@ async function importSignalData(file){
       const short=String(s.short??s.short_name??"").trim();
       const long=String(s.long??s.long_name??"").trim();
       const meaning=String(s.meaning??"").trim();
-      const category=String(s.category||"Sonstige").trim();
+      const category=JSON.stringify(Array.isArray(s.category)?[...new Set(s.category.map(v=>String(v).trim()).filter(Boolean))]:getSignalCategories({category:String(s.category||"Sonstige").trim()}));
       const image=String(s.image??s.image_url??"").trim();
       if(!short||!long||!meaning)throw new Error("Bei Signal "+(i+1)+" fehlen Kurzbezeichnung, Langbezeichnung oder Bedeutung.");
       // Große eingebettete Bilder werden nach dem Einlesen einzeln komprimiert.
@@ -2893,18 +2914,17 @@ document.addEventListener("visibilitychange",()=>{
 
 /* ===== REPARATUR: KATEGORIEN, LERNEN, BILDER ===== */
 
+function selectedSignalFormCategoriesSafe(){
+  const box=$("signalCategoryChoices");
+  return box?[...box.querySelectorAll('input[type="checkbox"]:checked')].map(el=>el.value):[];
+}
 function repairCategories(){
+  const currentFormCategories=selectedSignalFormCategoriesSafe();
+  renderSignalCategoryChoices(currentFormCategories);
   const categories=[...new Set([
     ...BASE_CATEGORIES,
-    ...signals.map(s=>s.category).filter(Boolean)
+    ...signals.flatMap(s=>getSignalCategories(s))
   ])];
-
-  const select=$("category");
-  const oldValue=select.value;
-  select.innerHTML=categories.map(c=>
-    `<option value="${esc(c)}">${esc(CATEGORY_LABELS[c]||c)}</option>`
-  ).join("");
-  if(categories.includes(oldValue))select.value=oldValue;
 
   const selected=[...selectedLearnCategories];
   const box=$("learnCategoryChoices");
@@ -2924,7 +2944,7 @@ function repairCategories(){
   renderExamCategories();
 }
 function renderExamCategories(){
-  const categories=[...new Set([...BASE_CATEGORIES,...signals.map(s=>s.category).filter(Boolean)])];
+  const categories=[...new Set([...BASE_CATEGORIES,...signals.flatMap(s=>getSignalCategories(s))])];
   $("examCategoryChoices").innerHTML=categories.map(c=>`<label class="category-option"><input type="checkbox" value="${esc(c)}" ${selectedExamCategories.has(c)?"checked":""}><span>${esc(CATEGORY_LABELS[c]||c)}</span></label>`).join("");
   $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
   $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
@@ -2938,14 +2958,14 @@ function ruleFilterAllows(signal,mode){
 }
 function getLearnSignals(){
   return signals.filter(s=>
-    selectedLearnCategories.has(s.category||"Sonstige") &&
+    getSignalCategories(s).some(c=>selectedLearnCategories.has(c)) &&
     ruleFilterAllows(s,"learn") &&
     (!$("onlyWrongFilter").checked || wrongSignalIds.has(s.id))
   );
 }
 function getExamSignals(){
   return signals.filter(s=>
-    selectedExamCategories.has(s.category||"Sonstige") && ruleFilterAllows(s,"exam")
+    getSignalCategories(s).some(c=>selectedExamCategories.has(c)) && ruleFilterAllows(s,"exam")
   );
 }
 
@@ -3118,6 +3138,8 @@ function installRepair(){
     $("cameraFile").click()
   );
 
+  $("signalCategoryChoices").addEventListener("change",()=>{});
+
   $("imageFile").addEventListener("change",e=>
     repairImageInput(e.target.files[0])
   );
@@ -3138,7 +3160,7 @@ function installRepair(){
   $("learnSelectAll").addEventListener("click",()=>{
     selectedLearnCategories=new Set([
       ...BASE_CATEGORIES,
-      ...signals.map(s=>s.category).filter(Boolean)
+      ...signals.flatMap(s=>getSignalCategories(s))
     ]);
     nextLearn();
   });
@@ -3183,7 +3205,7 @@ function installRepair(){
     $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
   });
   $("examSelectAll").addEventListener("click",()=>{
-    selectedExamCategories=new Set([...BASE_CATEGORIES,...signals.map(s=>s.category).filter(Boolean)]);
+    selectedExamCategories=new Set([...BASE_CATEGORIES,...signals.flatMap(s=>getSignalCategories(s))]);
     renderExamCategories();
   });
 
