@@ -148,6 +148,7 @@ label {display:block;color:var(--muted);font-size:13px;font-weight:500}
 }
 .correct {color:var(--green)}
 .incorrect {color:var(--red)}
+.warning-text {color:var(--orange);font-weight:700}
 .warning {
   background:#3d1c18;border:1px solid #b65b36;
   border-radius:10px;padding:12px;margin-top:12px;color:#ffd4b8;
@@ -2984,22 +2985,54 @@ function nextLearn(){
   setImage($("learnImage"),$("learnNoImage"),current.image);
 }
 
+function compareLearningText(expected,actual){
+  const clean=v=>String(v||"").toLocaleLowerCase("de-DE")
+    .normalize("NFC").replace(/[„“”]/g,'"').replace(/[’‘]/g,"'")
+    .replace(/\s+/g," ").trim();
+  const a=clean(expected),b=clean(actual);
+  if(a===b)return {accepted:true,kind:"exact"};
+  const words=v=>v.replace(/[.,;:!?()[\]{}„“”"'’‘—–-]/g," ")
+    .replace(/\s+/g," ").trim().split(" ").filter(Boolean);
+  const wa=words(a),wb=words(b);
+  if(wa.join(" ")===wb.join(" "))return {accepted:true,kind:"punctuation"};
+  if(!wa.length||wa.length!==wb.length)return {accepted:false,kind:"wrong"};
+  const distance=(x,y)=>{
+    let prev=Array.from({length:y.length+1},(_,i)=>i);
+    for(let i=1;i<=x.length;i++){
+      const row=[i];
+      for(let j=1;j<=y.length;j++){
+        row[j]=Math.min(row[j-1]+1,prev[j]+1,prev[j-1]+(x[i-1]===y[j-1]?0:1));
+      }
+      prev=row;
+    }
+    return prev[y.length];
+  };
+  let edits=0;
+  for(let i=0;i<wa.length;i++){
+    const d=distance(wa[i],wb[i]);
+    const max=wa[i].length>=9?2:1;
+    if(d>max)return {accepted:false,kind:"wrong"};
+    edits+=d;
+  }
+  // Only small, local word-form/typing differences are tolerated.
+  const ratio=edits/Math.max(1,wa.join("").length);
+  return ratio<=0.035?{accepted:true,kind:"spelling"}:{accepted:false,kind:"wrong"};
+}
+function learningFieldFeedback(label,expected,result){
+  if(result.kind==="exact")return `<p><b>${label}:</b> <span class="correct">✓ Richtig</span></p>`;
+  if(result.kind==="punctuation")return `<p><b>${label}:</b> <span class="warning-text">⚠ Zeichensetzung prüfen</span><br><small>Richtige Schreibweise: ${esc(expected)}</small></p>`;
+  if(result.kind==="spelling")return `<p><b>${label}:</b> <span class="warning-text">⚠ Rechtschreibung/Schreibweise prüfen</span><br><small>Richtige Lösung: ${esc(expected)}</small></p>`;
+  return `<p><b>${label}:</b> <span class="incorrect">✗ Inhalt stimmt nicht ausreichend überein</span><br><small>Richtige Lösung: ${esc(expected)}</small></p>`;
+}
 function checkLearn(){
   if(!current)return;
-
-  const normalize=v=>String(v||"").trim()
-    .toLocaleLowerCase("de-DE")
-    .replace(/\s+/g," ");
-
-  const shortOK=normalize($("learnShort").value)===
-    normalize(current.short);
-  const longOK=normalize($("learnLong").value)===
-    normalize(current.long);
-  const meaningOK=normalize($("learnMeaning").value)===
-    normalize(current.meaning);
-
-  const correct=shortOK&&longOK&&meaningOK;
-
+  const results=[
+    compareLearningText(current.short,$("learnShort").value),
+    compareLearningText(current.long,$("learnLong").value),
+    compareLearningText(current.meaning,$("learnMeaning").value)
+  ];
+  const correct=results.every(r=>r.accepted);
+  const hasWritingErrors=results.some(r=>r.kind==="punctuation"||r.kind==="spelling");
   stats.answered++;
   if(correct){
     stats.points++;
@@ -3008,16 +3041,14 @@ function checkLearn(){
     wrongSignalIds.add(current.id);
   }
   saveLocalProgress();
-
   const feedback=$("learnFeedback");
   feedback.hidden=false;
-  feedback.innerHTML=correct
-    ?'<strong class="correct">✓ Alles richtig!</strong>'
-    :`<strong class="incorrect">Nicht vollständig richtig.</strong>
-      <p><b>Kurzbezeichnung:</b> ${esc(current.short)}</p>
-      <p><b>Langbezeichnung:</b> ${esc(current.long)}</p>
-      <p><b>Bedeutung:</b> ${esc(current.meaning)}</p>`;
-
+  feedback.innerHTML=(correct
+    ?(hasWritingErrors?'<strong class="correct">✓ Inhaltlich richtig – Punkt erhalten.</strong><p>Bitte beachte die markierten Schreib- und Zeichensetzungsfehler.</p>':'<strong class="correct">✓ Alles richtig!</strong>')
+    :'<strong class="incorrect">Nicht vollständig richtig – kein Punkt.</strong>')+
+    learningFieldFeedback("Kurzbezeichnung",current.short,results[0])+
+    learningFieldFeedback("Langbezeichnung",current.long,results[1])+
+    learningFieldFeedback("Bedeutung",current.meaning,results[2]);
   $("checkLearn").disabled=true;
   $("nextLearn").hidden=false;
 }
@@ -3203,17 +3234,23 @@ function submitExamAnswer(){
   if(!examQuestions.length||examAnswered)return;
   examAnswered=true;
   const s=examQuestions[examIndex];
-  const norm=v=>String(v||"").trim().toLocaleLowerCase("de-DE").replace(/\s+/g," ");
-  const a=norm($("examShort").value)===norm(s.short);
-  const b=norm($("examLong").value)===norm(s.long);
-  const c=norm($("examMeaning").value)===norm(s.meaning);
-  const correct=a&&b&&c;
+  const results=[
+    compareLearningText(s.short,$("examShort").value),
+    compareLearningText(s.long,$("examLong").value),
+    compareLearningText(s.meaning,$("examMeaning").value)
+  ];
+  const correct=results.every(r=>r.accepted);
+  const hasWritingErrors=results.some(r=>r.kind==="punctuation"||r.kind==="spelling");
   if(correct){examCorrect++;wrongSignalIds.delete(s.id);}else{wrongSignalIds.add(s.id);}
   stats.answered++;if(correct)stats.points++;
   saveLocalProgress();
   $("examFeedback").hidden=false;
-  $("examFeedback").innerHTML=correct?'<strong class="correct">✓ Vollständig richtig!</strong>':
-    '<strong class="incorrect">Nicht vollständig richtig.</strong><p><b>Kurzbezeichnung:</b> '+esc(s.short)+'</p><p><b>Langbezeichnung:</b> '+esc(s.long)+'</p><p><b>Bedeutung:</b> '+esc(s.meaning)+'</p>';
+  $("examFeedback").innerHTML=(correct
+    ?(hasWritingErrors?'<strong class="correct">✓ Inhaltlich richtig – Punkt erhalten.</strong><p>Bitte beachte die markierten Schreib- und Zeichensetzungsfehler.</p>':'<strong class="correct">✓ Vollständig richtig!</strong>')
+    :'<strong class="incorrect">Nicht vollständig richtig – kein Punkt.</strong>')+
+    learningFieldFeedback("Kurzbezeichnung",s.short,results[0])+
+    learningFieldFeedback("Langbezeichnung",s.long,results[1])+
+    learningFieldFeedback("Bedeutung",s.meaning,results[2]);
   $("examShort").disabled=true;$("examLong").disabled=true;$("examMeaning").disabled=true;
   $("submitExam").disabled=true;$("submitExam").hidden=true;$("examNext").hidden=false;
 }
