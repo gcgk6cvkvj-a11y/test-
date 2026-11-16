@@ -456,13 +456,23 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <img id="learnImage" class="signal-image" alt="Signalbild" hidden>
     <div id="learnNoImage" class="placeholder">Kein Signalbild hinterlegt</div>
 
-    <p><b>Erkenne das Signal. Trage alle drei Angaben selbst ein:</b></p>
-    <label for="learnShort">1. Kurzbezeichnung</label>
-    <input id="learnShort" placeholder="z. B. Ne 1" autocomplete="off">
-    <label for="learnLong">2. Langbezeichnung</label>
-    <input id="learnLong" placeholder="z. B. Trapeztafel" autocomplete="off">
-    <label for="learnMeaning">3. Bedeutung</label>
-    <textarea id="learnMeaning" placeholder="Vollständige Bedeutung des Signals..."></textarea>
+    <div class="learn-mode-switch" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;">
+      <button type="button" id="learnModeText" class="primary">✍️ Selbst eingeben</button>
+      <button type="button" id="learnModeChoice">☑️ Auswahlaufgaben</button>
+    </div>
+    <div id="learnTextMode">
+      <p><b>Erkenne das Signal. Trage alle drei Angaben selbst ein:</b></p>
+      <label for="learnShort">1. Kurzbezeichnung</label>
+      <input id="learnShort" placeholder="z. B. Ne 1" autocomplete="off">
+      <label for="learnLong">2. Langbezeichnung</label>
+      <input id="learnLong" placeholder="z. B. Trapeztafel" autocomplete="off">
+      <label for="learnMeaning">3. Bedeutung</label>
+      <textarea id="learnMeaning" placeholder="Vollständige Bedeutung des Signals..."></textarea>
+    </div>
+    <div id="learnChoiceMode" hidden>
+      <p><b>Erkenne das Signalbild und wähle jeweils genau eine richtige Antwort.</b></p>
+      <div id="learnChoiceQuestions"></div>
+    </div>
 
     <div class="actions">
       <button type="button" class="primary" id="checkLearn">Antwort prüfen</button>
@@ -970,6 +980,8 @@ let wrongSignalIds=new Set(JSON.parse(localStorage.getItem("armando_wrong_signal
 let current=null;
 let learnNumber=0;
 let learnDone=false;
+let learnAnswerMode="text";
+let learnChoiceSets=[];
 let tempImageBase64="";
 let imageLoadToken=0;
 let selectedSignalIds=new Set();
@@ -2873,6 +2885,8 @@ function initEvents(){
   });
 
   $("checkLearn").addEventListener("click",checkLearn);
+  $("learnModeText").addEventListener("click",()=>setLearnAnswerMode("text"));
+  $("learnModeChoice").addEventListener("click",()=>setLearnAnswerMode("choice"));
   $("nextLearn").addEventListener("click",nextLearn);
   $("skipLearn").addEventListener("click",nextLearn);
 
@@ -2969,6 +2983,47 @@ function getExamSignals(){
   );
 }
 
+function setLearnAnswerMode(mode){
+  learnAnswerMode=mode;
+  $("learnTextMode").hidden=mode!=="text";
+  $("learnChoiceMode").hidden=mode!=="choice";
+  $("learnModeText").classList.toggle("primary",mode==="text");
+  $("learnModeChoice").classList.toggle("primary",mode==="choice");
+  if(current && mode==="choice")renderLearnChoices();
+}
+function makeLearnChoices(field){
+  const correct=String(current?.[field]||"").trim();
+  if(!correct)return [];
+  const pool=[...new Set(signals.map(s=>String(s?.[field]||"").trim()).filter(v=>v&&v!==correct))];
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const choices=[correct,...pool.slice(0,3)];
+  for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
+  return choices;
+}
+function renderLearnChoices(){
+  if(!current)return;
+  const fields=[['short','Kurzbezeichnung'],['long','Langbezeichnung'],['meaning','Bedeutung']];
+  learnChoiceSets=fields.map(([field,label])=>({field,label,choices:makeLearnChoices(field)}));
+  $("learnChoiceQuestions").innerHTML=learnChoiceSets.map((q,index)=>`<fieldset class="choice-question" style="border:1px solid var(--border,#ccc);border-radius:12px;padding:12px;margin:12px 0;"><legend><b>${index+1}. ${q.label}</b></legend>${q.choices.map((choice,i)=>`<label class="choice-option" style="display:flex;gap:9px;align-items:flex-start;padding:9px 4px;cursor:pointer;"><input type="radio" name="learnChoice${index}" value="${i}" style="margin-top:3px;flex:0 0 auto;"><span>${esc(choice)}</span></label>`).join('')}</fieldset>`).join('');
+}
+function checkLearnChoices(){
+  const unanswered=learnChoiceSets.some((q,index)=>!document.querySelector(`input[name="learnChoice${index}"]:checked`));
+  if(unanswered){notify("Bitte beantworte alle drei Fragen.");return;}
+  const results=learnChoiceSets.map((q,index)=>{
+    const selected=Number(document.querySelector(`input[name="learnChoice${index}"]:checked`).value);
+    const answer=q.choices[selected];
+    return {label:q.label,correct:answer===String(current[q.field]||"").trim(),answer,expected:current[q.field]};
+  });
+  const correct=results.every(r=>r.correct);
+  stats.answered++;
+  if(correct){stats.points++;wrongSignalIds.delete(current.id);}else{wrongSignalIds.add(current.id);}
+  saveLocalProgress();
+  $("learnFeedback").hidden=false;
+  $("learnFeedback").innerHTML=(correct?'<strong class="correct">✓ Alle drei Antworten richtig! Punkt erhalten.</strong>':'<strong class="incorrect">✗ Nicht alle Antworten richtig – kein Punkt.</strong>')+results.map(r=>`<p><b>${r.label}:</b> <span class="${r.correct?'correct':'incorrect'}">${r.correct?'✓ Richtig':'✗ Falsch'}</span>${r.correct?'':`<br><small>Richtige Lösung: ${esc(r.expected)}</small>`}</p>`).join('');
+  $("checkLearn").disabled=true;$("nextLearn").hidden=false;
+  $("learnChoiceQuestions").querySelectorAll('input').forEach(el=>el.disabled=true);
+}
+
 function nextLearn(){
   repairCategories();
 
@@ -3003,6 +3058,7 @@ function nextLearn(){
 
   setRulebookIndicator($("learnRulebookIndicator"),current);
   setImage($("learnImage"),$("learnNoImage"),current.image);
+  if(learnAnswerMode==="choice")renderLearnChoices();
 }
 
 function compareLearningText(expected,actual){
@@ -3055,6 +3111,7 @@ function learningFieldFeedback(label,expected,result){
 }
 function checkLearn(){
   if(!current)return;
+  if(learnAnswerMode==="choice"){checkLearnChoices();return;}
   const results=[
     compareLearningText(current.short,$("learnShort").value),
     compareLearningText(current.long,$("learnLong").value),
