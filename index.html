@@ -308,7 +308,6 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 .support-ticket {padding:10px;margin:8px 0}
 .support-ticket .support-thread {margin-top:6px!important}
 </style>
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 </head>
 
 <body>
@@ -828,13 +827,6 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 
   <div class="panel">
     <h2 id="formTitle">Signal hinzufügen</h2>
-    <div class="panel" style="background:rgba(40,120,180,.08);border:1px solid rgba(90,160,220,.35);">
-      <strong>📷 Signalkarte automatisch erfassen</strong>
-      <p class="muted">Fotografiere eine Signalkarte. GleisCampus erkennt den Text und trägt die Felder zum Bearbeiten ein.</p>
-      <button type="button" class="primary" id="scanSignalCard">Signalkarte scannen</button>
-      <input type="file" id="scanSignalFile" accept="image/*" capture="environment" hidden>
-      <p id="scanStatus" class="muted" aria-live="polite"></p>
-    </div>
     <input type="hidden" id="editId">
     <label for="shortName">Kurzbezeichnung</label>
     <input id="shortName" placeholder="z. B. Lf 1">
@@ -2277,8 +2269,6 @@ function clearForm(){
   tempImageBase64="";
   $("imageFile").value="";
   $("cameraFile").value="";
-  if($("scanStatus"))$("scanStatus").textContent="";
-  $("scanSignalFile").value="";
   $("formTitle").textContent="Signal hinzufügen";
   $("saveSignal").textContent="Signal speichern";
   $("clearForm").textContent="Formular leeren";
@@ -3086,145 +3076,8 @@ async function repairImageInput(file){
   }
 }
 
-
-async function scanSignalCardFile(file){
-  if(!file)return;
-  const status=$("scanStatus");
-  const button=$("scanSignalCard");
-  if(!window.Tesseract){notify("Texterkennung konnte nicht geladen werden. Bitte Internetverbindung prüfen.");return;}
-  button.disabled=true;
-  status.textContent="Foto wird vorbereitet …";
-  try{
-    // Originalfoto bleibt als Signalbild erhalten; OCR arbeitet auf kontrastoptimierten Kopien.
-    await repairImageInput(file);
-    const source=await createImageBitmap(file);
-    const maxSide=2200;
-    const scale=Math.min(2.2,maxSide/Math.max(source.width,source.height));
-    const w=Math.max(1,Math.round(source.width*scale));
-    const h=Math.max(1,Math.round(source.height*scale));
-    const base=document.createElement("canvas");
-    base.width=w;base.height=h;
-    const bctx=base.getContext("2d",{willReadFrequently:true});
-    bctx.drawImage(source,0,0,w,h);
-    source.close&&source.close();
-    const pixels=bctx.getImageData(0,0,w,h);
-    let sum=0;
-    for(let i=0;i<pixels.data.length;i+=4){
-      const y=0.299*pixels.data[i]+0.587*pixels.data[i+1]+0.114*pixels.data[i+2];
-      sum+=y;
-    }
-    const average=sum/(pixels.data.length/4);
-    const variants=[];
-    // Helle Karten: Graustufen + Kontrast. Dunkle Signalkarten: zusätzlich invertierte Fassung.
-    for(const invert of [false,true]){
-      const canvas=document.createElement("canvas");canvas.width=w;canvas.height=h;
-      const ctx=canvas.getContext("2d");
-      const image=ctx.createImageData(w,h);
-      for(let i=0;i<pixels.data.length;i+=4){
-        let y=0.299*pixels.data[i]+0.587*pixels.data[i+1]+0.114*pixels.data[i+2];
-        y=Math.max(0,Math.min(255,(y-128)*1.65+128));
-        if(invert)y=255-y;
-        image.data[i]=image.data[i+1]=image.data[i+2]=y;
-        image.data[i+3]=255;
-      }
-      ctx.putImageData(image,0,0);
-      // Leichtes Nachschärfen durch binäre Hochkontrast-Variante vermeiden; Graustufen erhalten Details.
-      variants.push({canvas,invert,preferred:(average<145)===invert});
-    }
-    status.textContent="Text wird erkannt. Dunkle und helle Darstellung werden geprüft …";
-    let best=null;
-    for(let i=0;i<variants.length;i++){
-      const variant=variants[i];
-      status.textContent=`Texterkennung: Variante ${i+1} von ${variants.length} …`;
-      const result=await Tesseract.recognize(variant.canvas,"deu+eng",{
-        logger:m=>{if(m.status==="recognizing text")status.textContent="Texterkennung: "+Math.round((m.progress||0)*100)+" %";},
-        tessedit_pageseg_mode:"6",
-        preserve_interword_spaces:"1"
-      });
-      const confidence=Number(result.data.confidence)||0;
-      const score=confidence+(variant.preferred?4:0);
-      if(!best||score>best.score)best={result,score};
-    }
-    const raw=(best?.result?.data?.text||"").replace(/\r/g,"");
-    const normalized=raw
-      .replace(/([A-Za-zÄÖÜäöüß])[-–]\s*\n\s*([a-zäöüß])/g,"$1$2")
-      .replace(/[|]/g,"I");
-    const lines=normalized.split("\n").map(x=>x.replace(/\s+/g," ").trim()).filter(Boolean);
-    const joined=lines.join(" ").replace(/\s+/g," ");
-
-    // Code und Regelwerk getrennt erkennen; bei unsicherem OCR nichts erfinden.
-    const shortMatch=joined.match(/\b((?:Lf|Ra|So|Hp|Vr|Ks|Zs|Ne|Sh|El|Bü|Ts|Fz)\s*\d{1,2}(?:\s*\/\s*\d{1,2})?)\b/i);
-    const ruleMatch=joined.match(/\b(DV\s*301|DS\s*301|DV301|DS301)\b/i);
-    if(shortMatch)$("shortName").value=shortMatch[1].replace(/\s+/g," ").replace(/\s*\/\s*/g,"/").trim();
-    if(ruleMatch)$("regelwerk").value=/DV/i.test(ruleMatch[1])?"DV301":"DS301";
-
-    // Titel zwischen Signalcode und Regelwerk auslesen, auch über Zeilenumbrüche hinweg.
-    let titleLine="";
-    if(shortMatch&&ruleMatch){
-      const a=joined.toLowerCase().indexOf(shortMatch[1].toLowerCase());
-      const b=joined.toLowerCase().indexOf(ruleMatch[1].toLowerCase(),a+shortMatch[1].length);
-      if(a>=0&&b>a)titleLine=joined.slice(a+shortMatch[1].length,b);
-    }
-    if(!titleLine){
-      const titleIndex=lines.findIndex(x=>/\bSignal\b/i.test(x));
-      if(titleIndex>=0){
-        titleLine=lines.slice(titleIndex,Math.min(lines.length,titleIndex+3)).join(" ")
-          .replace(/^.*?\bSignal\b\s*/i,"")
-          .replace(/\(?\s*(?:DV|DS)\s*301\s*\)?/ig,"");
-      }
-    }
-    titleLine=titleLine.replace(/\s+/g," ").replace(/^[-–:]+|[-–:]+$/g,"").trim();
-    if(titleLine.length>2&&titleLine.length<100&&/[A-Za-zÄÖÜäöü]/.test(titleLine))$("longName").value=titleLine;
-
-    // Bedeutung nach der Regelwerk-Angabe; nur übernehmen, wenn sie wie ein Satz aussieht.
-    let meaning="";
-    if(ruleMatch){
-      const rulePos=joined.toLowerCase().indexOf(ruleMatch[1].toLowerCase());
-      meaning=joined.slice(rulePos+ruleMatch[1].length).replace(/^\s*[):.-]*/,"").trim();
-    }
-    if(meaning.length<35){
-      const candidates=lines.filter(x=>x.length>35&&!/\bSignal\b/i.test(x)&&!/\b(?:DV|DS)\s*301\b/i.test(x));
-      if(candidates.length)meaning=candidates.sort((a,b)=>b.length-a.length)[0];
-    }
-    // OCR-Müll nicht in die Datenbank übernehmen: Mindestlänge und plausibler Wortanteil.
-    const words=meaning.split(/\s+/).filter(x=>/[A-Za-zÄÖÜäöüß]{3,}/.test(x));
-    if(meaning.length>35&&words.length>=5&&words.length/Math.max(1,meaning.split(/\s+/).length)>.45){
-      $("meaning").value=meaning;
-    }else{
-      status.textContent="Foto erkannt, aber die Bedeutung war nicht zuverlässig lesbar. Bitte Karte gerader und näher fotografieren.";
-    }
-
-    const short=$("shortName").value.trim();
-    const prefix=(short.match(/^[A-Za-zÄÖÜäöü]+/)||[])[0];
-    if(prefix){
-      const option=Array.from($("category").options).find(o=>o.value.toLowerCase().startsWith(prefix.toLowerCase()));
-      if(option)$("category").value=option.value;
-    }
-    if(!shortMatch||!ruleMatch||!titleLine){
-      status.textContent="Teilweise erkannt. Bitte fehlende Felder prüfen. Bei schlechtem Ergebnis die Karte möglichst gerade, nah und ohne Spiegelung fotografieren.";
-    }else if(!meaning||meaning.length<35){
-      status.textContent="Bezeichnung und Regelwerk erkannt. Bedeutung bitte kontrollieren oder ergänzen.";
-    }else{
-      status.textContent="Erkennung abgeschlossen. Bitte Angaben kontrollieren und bei Bedarf korrigieren.";
-    }
-    notify("Scan abgeschlossen. Bitte erkannte Angaben vor dem Speichern kontrollieren.");
-  }catch(err){
-    console.error("Signalkarten-Erkennung:",err);
-    status.textContent="Erkennung fehlgeschlagen. Du kannst die Felder weiterhin manuell ausfüllen.";
-    notify("Texterkennung fehlgeschlagen: "+(err.message||err));
-  }finally{
-    button.disabled=false;
-  }
-}
-
 function installRepair(){
   repairCategories();
-
-  $("scanSignalCard").addEventListener("click",()=>$("scanSignalFile").click());
-  $("scanSignalFile").addEventListener("change",e=>{
-    scanSignalCardFile(e.target.files&&e.target.files[0]);
-    e.target.value="";
-  });
 
   $("pickGallery").addEventListener("click",()=>
     $("imageFile").click()
