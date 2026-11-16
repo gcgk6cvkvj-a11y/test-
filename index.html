@@ -249,6 +249,8 @@ label {display:block;color:var(--muted);font-size:13px;font-weight:500}
 .rule-filter-content[hidden] {display:none!important}
 .rule-filter-option {display:flex;align-items:center;gap:9px;padding:8px 10px;background:#1b2735;border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px}
 .rule-filter-option input {width:19px;height:19px;margin:0;accent-color:var(--accent)}
+.rulebook-indicator {display:inline-flex;align-items:center;gap:7px;margin:4px 0 12px;padding:8px 12px;border-radius:999px;border:1px solid var(--accent);background:rgba(70,130,180,.13);color:var(--text);font-weight:800;font-size:13px;letter-spacing:.2px}
+.rulebook-indicator[hidden] {display:none!important}
 
 .category-toggle {
   width:100%;margin-top:10px;padding:10px;font-size:13px;
@@ -449,6 +451,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 
     <div class="progress"><span id="learnProgress"></span></div>
 
+    <div id="learnRulebookIndicator" class="rulebook-indicator" role="status" aria-live="polite" hidden></div>
     <img id="learnImage" class="signal-image" alt="Signalbild" hidden>
     <div id="learnNoImage" class="placeholder">Kein Signalbild hinterlegt</div>
 
@@ -515,6 +518,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
       </div>
       <div class="progress"><span id="examProgress"></span></div>
 
+      <div id="examRulebookIndicator" class="rulebook-indicator" role="status" aria-live="polite" hidden></div>
       <img id="examImage" class="signal-image" alt="Signalbild" hidden>
       <div id="examNoImage" class="placeholder" hidden>Kein Signalbild hinterlegt</div>
 
@@ -2496,6 +2500,7 @@ function nextLearn(){
   $("learnShort").value=""; $("learnLong").value=""; $("learnMeaning").value="";
   $("learnFeedback").hidden=true; $("nextLearn").hidden=true;
   $("checkLearn").disabled=false;
+  setRulebookIndicator($("learnRulebookIndicator"),current);
   setImage($("learnImage"),$("learnNoImage"),current.image);
 }
 function checkLearn(){
@@ -2504,6 +2509,13 @@ function checkLearn(){
   $("learnFeedback").textContent=ok?"Richtig!":"Falsch!";
   $("learnFeedback").hidden=false;
   $("checkLearn").disabled=true; $("nextLearn").hidden=false;
+}
+
+function setRulebookIndicator(element,signal){
+  if(!element)return;
+  const value=signal?.regelwerk;
+  element.textContent=value==="DS301"?"Abgefragtes Regelwerk: DS 301":value==="DV301"?"Abgefragtes Regelwerk: DV 301":"Regelwerk: Nicht zugeordnet";
+  element.hidden=false;
 }
 
 function setImage(img,placeholder,src){
@@ -2951,6 +2963,7 @@ function nextLearn(){
   if(!list.length){
     current=null;
     $("learnImage").hidden=true;
+    $("learnRulebookIndicator").hidden=true;
     $("learnNoImage").hidden=false;
     $("learnNoImage").textContent=
       "Keine Signale für diese Auswahl vorhanden.";
@@ -2967,6 +2980,7 @@ function nextLearn(){
   $("learnNoImage").textContent=
     "Kein Bild hinterlegt – Signal anhand der Angaben üben.";
 
+  setRulebookIndicator($("learnRulebookIndicator"),current);
   setImage($("learnImage"),$("learnNoImage"),current.image);
 }
 
@@ -3182,6 +3196,7 @@ function renderExamQuestion(){
   $("submitExam").disabled=false;$("submitExam").hidden=false;
   $("examFeedback").hidden=true;$("examNext").hidden=true;
   $("examNext").textContent=examIndex===examQuestions.length-1?"Ergebnis anzeigen ➔":"Weiter ➔";
+  setRulebookIndicator($("examRulebookIndicator"),s);
   setImage($("examImage"),$("examNoImage"),s.image);
 }
 function submitExamAnswer(){
