@@ -120,6 +120,12 @@ input,select,textarea {
 input:focus,select:focus,textarea:focus {border-color:var(--accent)}
 textarea {min-height:95px;resize:vertical}
 label {display:block;color:var(--muted);font-size:13px;font-weight:500}
+/* Multiple-Choice: Radio-Buttons dürfen nicht die globale Formularbreite von 100% übernehmen. */
+#learnChoiceQuestions {width:100%;min-width:0;}
+#learnChoiceQuestions .choice-question {width:100%;max-width:100%;min-width:0;}
+#learnChoiceQuestions .choice-option {display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;min-width:0;}
+#learnChoiceQuestions .choice-option input[type="radio"] {width:22px;min-width:22px;max-width:22px;height:22px;flex:0 0 22px;margin:2px 0 0;padding:0;}
+#learnChoiceQuestions .choice-option span {display:block;flex:1 1 auto;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:normal;text-align:left;line-height:1.45;}
 .panel {
   background:var(--panel);border:1px solid var(--border);
   border-radius:16px;padding:16px;margin-bottom:14px;
