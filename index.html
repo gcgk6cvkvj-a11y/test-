@@ -136,6 +136,9 @@ label {display:block;color:var(--muted);font-size:13px;font-weight:500}
 .row {display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .row>* {flex:1;min-width:130px}
 .actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.gc-progress{display:flex;align-items:center;gap:9px;color:var(--accent);font-size:14px;margin:10px 0;padding:9px 11px;background:rgba(72,166,255,.09);border:1px solid rgba(72,166,255,.25);border-radius:9px}
+.gc-spinner{width:16px;height:16px;border:2px solid rgba(72,166,255,.25);border-top-color:var(--accent);border-radius:50%;animation:gcspin .8s linear infinite;flex:0 0 auto}
+@keyframes gcspin{to{transform:rotate(360deg)}}
 .actions button {flex:1;min-width:110px}
 .signal-image {
   width:100%;height:240px;object-fit:contain;background:#fff;
@@ -766,6 +769,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
     <h2>📨 Geteilte Signale</h2>
     <div id="sharedBulkActions" class="bulk-toolbar" hidden>
       <div id="sharedPendingCount" class="selection-count"></div>
+      <div id="sharedBulkProgress" class="gc-progress" hidden aria-live="polite"><span class="gc-spinner"></span><span id="sharedBulkProgressText">Bitte warten …</span></div>
       <div class="actions">
         <button type="button" class="good" id="acceptAllShared">✓ Alle übernehmen</button>
         <button type="button" class="danger" id="rejectAllShared">✕ Alle ablehnen</button>
@@ -947,6 +951,7 @@ hr {border:0;border-top:1px solid var(--border);margin:16px 0}
 <dialog id="shareDialog" style="width:min(95vw,470px);background:#1b2735;color:#f3f6fa;border:1px solid #48a6ff;border-radius:14px;padding:18px">
   <h3>📨 Signal(e) teilen</h3>
   <p id="shareDialogInfo" class="muted"></p>
+  <div id="shareProgress" class="gc-progress" hidden aria-live="polite"><span class="gc-spinner"></span><span id="shareProgressText">Signale werden gesendet …</span></div>
   <label for="shareRecipient">E-Mail-Adresse des Empfängers</label>
   <input id="shareRecipient" list="friendEmailSuggestions" type="email" placeholder="Zum Beispiel Andr..." autocomplete="off">
   <datalist id="friendEmailSuggestions"></datalist>
@@ -2394,16 +2399,17 @@ async function confirmShareDialog(){
   const email=$("shareRecipient").value.trim().toLowerCase();
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return notify("Bitte gültige E-Mail-Adresse eingeben.");
   if(!sharePendingSignals.length)return;
-  const button=$("confirmShareDialog");button.disabled=true;
+  const button=$("confirmShareDialog"),oldLabel=button.textContent;button.disabled=true;button.textContent="Wird gesendet …";
+  $("shareProgress").hidden=false;$("shareProgressText").textContent=sharePendingSignals.length+" Signal(e) werden übertragen. Bitte Fenster geöffnet lassen …";
   try{
     const payload=sharePendingSignals.map(s=>({sender_email:currentUser.email,recipient_email:email,signal_data:s}));
     const {error}=await _supabase.from("shared_signals").insert(payload);
     if(error)throw error;
     const sent=sharePendingSignals.length;
     selectedSignalIds.clear();closeShareDialog();renderList();
-    notify(sent+" Signal(e) geteilt!");
+    notify(sent+" Signal(e) erfolgreich geteilt.");
   }catch(err){notify("Teilen fehlgeschlagen: "+err.message);}
-  finally{button.disabled=false;}
+  finally{button.disabled=false;button.textContent=oldLabel;$("shareProgress").hidden=true;}
 }
 function shareSelectedSignals(){
   openShareDialog(signals.filter(s=>selectedSignalIds.has(String(s.id))));
@@ -2460,7 +2466,8 @@ async function processAllShared(accept){
   sharedBulkRunning=true;
   const buttons=[$("acceptAllShared"),$("rejectAllShared")];
   buttons.forEach(b=>b.disabled=true);
-  let completed=0;
+  $("sharedBulkProgress").hidden=false;
+  let completed=0;$("sharedBulkProgressText").textContent="0 von "+items.length+" Signalen "+(accept?"übernommen":"abgelehnt")+" …";
   try{
     for(const item of items){
       if(accept){
@@ -2483,13 +2490,14 @@ async function processAllShared(accept){
         if(deleteError)throw deleteError;
         if(!removed?.length)throw Error("Freigabe konnte nicht entfernt werden.");
       }
-      completed++;
+      completed++;$("sharedBulkProgressText").textContent=completed+" von "+items.length+" Signalen verarbeitet …";
     }
     notify(completed+" geteilte Signale "+(accept?"übernommen.":"abgelehnt."));
   }catch(err){
     alert(`Aktion nach ${completed} von ${items.length} Signalen abgebrochen: ${err.message||err}`);
   }finally{
     sharedBulkRunning=false;
+    $("sharedBulkProgress").hidden=true;
     buttons.forEach(b=>b.disabled=false);
     await loadSharedSignals();
     if(accept)await loadCloudSignals();
@@ -2521,13 +2529,28 @@ document.addEventListener("click",async e=>{
 
 document.addEventListener("click", async e=>{
   const btn=e.target.closest(".btn-accept-shared");
-  if(btn){
-    const {data}=await _supabase.from("shared_signals").select("*").eq("id",btn.dataset.id).single();
-    await _supabase.from("signals").insert([{...data.signal_data, id:undefined, user_id:currentUser.id}]);
-    await _supabase.from("shared_signals").update({status:"accepted"}).eq("id",btn.dataset.id);
-    loadSharedSignals();
-    loadCloudSignals();
-    notify("Übernommen!");
+  if(!btn||btn.disabled||!currentUser)return;
+  const card=btn.closest(".signal-card"),oldLabel=btn.textContent;
+  btn.disabled=true;btn.textContent="Wird übernommen …";
+  let progress=card?.querySelector(".gc-card-progress");
+  if(card&&!progress){progress=document.createElement("div");progress.className="gc-progress gc-card-progress";progress.innerHTML='<span class="gc-spinner"></span><span>Signal wird in deine Sammlung kopiert …</span>';card.insertBefore(progress,card.querySelector(".actions"));}
+  try{
+    const {data,error:readError}=await _supabase.from("shared_signals").select("*").eq("id",btn.dataset.id).single();
+    if(readError)throw readError;if(!data)throw Error("Freigabe nicht gefunden.");
+    const signal=data.signal_data||{};
+    const {error:insertError}=await _supabase.from("signals").insert([{
+      short:signal.short,long:signal.long,meaning:signal.meaning,category:signal.category||"Sonstige",
+      regelwerk:["DS301","DV301"].includes(signal.regelwerk)?signal.regelwerk:null,
+      image:signal.image||"",user_id:currentUser.id
+    }]);
+    if(insertError)throw insertError;
+    const {error:updateError}=await _supabase.from("shared_signals").update({status:"accepted"}).eq("id",btn.dataset.id).eq("status","pending");
+    if(updateError)throw updateError;
+    notify("Signal erfolgreich übernommen!");
+    await loadSharedSignals();await loadCloudSignals();
+  }catch(err){
+    notify("Übernehmen fehlgeschlagen: "+(err.message||err));
+    btn.disabled=false;btn.textContent=oldLabel;if(progress)progress.remove();
   }
 });
 
