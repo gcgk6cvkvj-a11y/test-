@@ -1,0 +1,3457 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#101722">
+<title>GleisCampus – Signale lernen</title>
+<meta name="apple-mobile-web-app-title" content="GleisCampus">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png?v=gc1">
+<link rel="icon" type="image/png" href="./apple-touch-icon.png?v=gc1">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+:root {
+  --bg:#101722;--panel:#1b2735;--panel2:#243448;
+  --text:#f3f6fa;--muted:#aab8c8;--accent:#48a6ff;
+  --green:#38c98b;--red:#ff6474;--orange:#ffad42;
+  --border:#34465b;
+}
+* {box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body {
+  margin:0;padding:12px 12px 90px;background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+header,main {max-width:900px;margin:auto}
+header {
+  padding:8px 3px 14px;display:flex;
+  justify-content:space-between;align-items:center;gap:10px;
+}
+.header-left {display:flex;align-items:center;gap:12px}
+h1 {font-size:22px;margin:4px 0;display:flex;align-items:center;gap:8px}
+h2 {font-size:20px;margin:0 0 12px}
+h3 {font-size:16px;margin:10px 0}
+p {line-height:1.5;margin:8px 0}
+small,.muted {color:var(--muted)}
+.brand {color:var(--accent)}
+
+#menuBtn {
+  background:var(--panel2);border:1px solid var(--border);
+  color:var(--text);font-size:20px;padding:8px 12px;
+  border-radius:10px;position:relative;
+}
+.badge-dot {
+  position:absolute;top:-4px;right:-4px;width:12px;height:12px;
+  background:var(--red);border-radius:50%;border:2px solid var(--bg);
+}
+#sidebarBackdrop, #popupBackdrop {
+  position:fixed;inset:0;background:rgba(0,0,0,.65);
+  z-index:1999;backdrop-filter:blur(3px);
+}
+#sidebar {
+  position:fixed;top:0;left:0;bottom:0;width:280px;max-width:82vw;
+  background:#0d131d;border-right:1px solid var(--border);
+  z-index:2000;padding:18px;display:flex;flex-direction:column;
+  gap:10px;transform:translateX(-105%);transition:transform .25s ease;
+  box-shadow:6px 0 24px rgba(0,0,0,.6);
+  overflow-y:auto;
+}
+#sidebar.open {transform:translateX(0)}
+.sidebar-header {
+  display:flex;justify-content:space-between;align-items:center;
+  padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:6px;
+}
+.sidebar-link {
+  width:100%;justify-content:flex-start;background:var(--panel);
+  padding:13px 14px;font-size:15px;position:relative;
+}
+.sidebar-link.active {border-color:var(--accent);color:var(--accent)}
+.pill-count {
+  margin-left:auto;background:var(--red);color:#fff;
+  font-size:11px;padding:2px 7px;border-radius:99px;font-weight:700;
+}
+
+#broadcastPopup {
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:90%;max-width:450px;background:#1b2735;border:1px solid var(--accent);
+  border-radius:16px;padding:22px;z-index:3000;box-shadow:0 10px 30px rgba(0,0,0,.7);
+}
+#broadcastPopup h2 {color:var(--accent);margin-top:0;}
+
+nav#mainNav {
+  position:fixed;bottom:0;left:0;right:0;background:#0d131d;
+  border-top:1px solid var(--border);display:grid;
+  grid-template-columns:repeat(4,1fr);
+  padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
+  z-index:1000;box-shadow:0 -4px 20px rgba(0,0,0,.5);
+}
+nav#mainNav button {
+  background:transparent;border:none;border-radius:8px;
+  color:var(--muted);font-size:11px;font-weight:600;
+  padding:6px 2px;display:flex;flex-direction:column;
+  align-items:center;gap:4px;
+}
+nav#mainNav button .icon {font-size:18px}
+nav#mainNav button.active {color:var(--accent);background:rgba(72,166,255,.1)}
+
+button,input,select,textarea {font:inherit;border-radius:10px;border:1px solid var(--border)}
+button {
+  background:var(--panel2);color:var(--text);padding:12px 14px;
+  cursor:pointer;font-weight:600;display:inline-flex;
+  align-items:center;justify-content:center;gap:6px;
+}
+button:active {transform:scale(.98)}
+button.primary {background:var(--accent);color:#071522;border-color:var(--accent)}
+button.good {background:#176e50;color:#fff;border-color:#26795b}
+button.danger {background:#853542;color:#fff;border-color:#a84353}
+button.link-btn {
+  background:transparent;border:none;color:var(--accent);
+  padding:6px;font-size:13px;text-decoration:underline;width:100%;margin-top:8px;
+}
+button:disabled {opacity:.45;cursor:not-allowed}
+input,select,textarea {
+  width:100%;padding:12px;margin:6px 0 14px;
+  background:#111c29;color:var(--text);outline:none;
+}
+input:focus,select:focus,textarea:focus {border-color:var(--accent)}
+textarea {min-height:95px;resize:vertical}
+label {display:block;color:var(--muted);font-size:13px;font-weight:500}
+/* Multiple-Choice: Radio-Buttons dürfen nicht die globale Formularbreite von 100% übernehmen. */
+#learnChoiceQuestions {width:100%;min-width:0;}
+#learnChoiceQuestions .choice-question {width:100%;max-width:100%;min-width:0;}
+#learnChoiceQuestions .choice-option {display:flex;flex-direction:row;align-items:flex-start;gap:10px;width:100%;min-width:0;}
+#learnChoiceQuestions .choice-option input[type="radio"] {width:22px;min-width:22px;max-width:22px;height:22px;flex:0 0 22px;margin:2px 0 0;padding:0;}
+#learnChoiceQuestions .choice-option span {display:block;flex:1 1 auto;min-width:0;max-width:100%;overflow-wrap:anywhere;word-break:normal;text-align:left;line-height:1.45;}
+.panel {
+  background:var(--panel);border:1px solid var(--border);
+  border-radius:16px;padding:16px;margin-bottom:14px;
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
+}
+.page {display:block}
+.page[hidden] {display:none!important}
+.row {display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.row>* {flex:1;min-width:130px}
+.actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.gc-progress{display:flex;align-items:center;gap:9px;color:var(--accent);font-size:14px;margin:10px 0;padding:9px 11px;background:rgba(72,166,255,.09);border:1px solid rgba(72,166,255,.25);border-radius:9px}
+.gc-spinner{width:16px;height:16px;border:2px solid rgba(72,166,255,.25);border-top-color:var(--accent);border-radius:50%;animation:gcspin .8s linear infinite;flex:0 0 auto}
+@keyframes gcspin{to{transform:rotate(360deg)}}
+.actions button {flex:1;min-width:110px}
+.signal-image {
+  width:100%;height:240px;object-fit:contain;background:#fff;
+  border-radius:12px;margin:10px 0;border:1px solid var(--border);
+}
+.placeholder {
+  height:180px;background:#111c29;border:1px dashed var(--border);
+  border-radius:12px;display:flex;align-items:center;
+  justify-content:center;color:var(--muted);text-align:center;
+  padding:20px;margin:10px 0;
+}
+.placeholder[hidden], .signal-image[hidden] {display:none!important}
+.answer {
+  background:#111c29;border-radius:12px;padding:14px;
+  margin-top:14px;border:1px solid var(--border);
+}
+.correct {color:var(--green)}
+.incorrect {color:var(--red)}
+.warning-text {color:var(--orange);font-weight:700}
+.warning {
+  background:#3d1c18;border:1px solid #b65b36;
+  border-radius:10px;padding:12px;margin-top:12px;color:#ffd4b8;
+}
+.warning h3 {color:#ff8b68;margin-top:0}
+.solution {
+  background:#103328;border:1px solid #26795b;
+  border-radius:10px;padding:14px;margin-top:12px;
+}
+.solution h3 {color:#d9fff0;margin-top:0}
+.solution p {margin:8px 0}
+.progress {
+  height:8px;background:#101722;border-radius:10px;
+  overflow:hidden;margin:10px 0;
+}
+.progress span {
+  display:block;height:100%;background:var(--green);
+  width:0%;transition:width .3s ease;
+}
+.stat-grid {display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat {
+  background:#111c29;border-radius:12px;padding:14px;
+  border:1px solid var(--border);
+}
+.stat strong {display:block;font-size:24px;margin-top:6px;color:var(--accent)}
+.signal-card {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:12px;padding:14px;margin:10px 0;
+}
+.signal-card h3 {margin:0 0 6px;color:#fff;font-size:17px}
+.signal-card p {margin:8px 0;color:#d0dbe7;font-size:14px}
+.ticket-tag {
+  display:inline-block;padding:3px 8px;border-radius:6px;
+  font-size:11px;font-weight:700;background:var(--panel2);color:var(--accent);
+}
+.admin-reply-box {
+  background:#103328;border-left:3px solid var(--green);
+  padding:10px 12px;border-radius:8px;margin-top:10px;font-size:14px;
+}
+.tutorial-step {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:12px;padding:14px;margin-bottom:10px;
+}
+.tutorial-step h3 {margin:0 0 6px;color:var(--accent)}
+.signal-select-row {
+  display:flex;align-items:center;gap:10px;margin-bottom:12px;
+  padding-bottom:10px;border-bottom:1px solid var(--border);
+}
+.signal-select-row label {
+  color:var(--text);font-size:14px;display:flex;
+  align-items:center;gap:9px;cursor:pointer;flex:1;
+}
+.signal-select-row input[type="checkbox"],
+.signal-card input[type="checkbox"],
+.filter-box input[type="checkbox"] {
+  width:20px;height:20px;margin:0;accent-color:var(--accent);flex-shrink:0;
+}
+.filter-box {
+  display:flex;align-items:center;gap:10px;background:#111c29;
+  border:1px solid var(--border);padding:10px 12px;border-radius:10px;margin-bottom:12px;
+}
+.signal-card.selected {border-color:var(--accent);background:#14283b}
+.bulk-toolbar {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:12px;padding:12px;margin:10px 0 14px;
+}
+.bulk-toolbar .actions {margin-top:8px}
+.bulk-toolbar button {font-size:13px;padding:11px 8px}
+.selection-count {color:var(--accent);font-weight:700;font-size:14px;margin-top:8px}
+.category-picker {
+  background:#111c29;border:1px solid var(--border);
+  border-radius:12px;padding:12px;margin:10px 0 14px;
+}
+.category-picker-header {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:10px;flex-wrap:wrap;
+}
+.category-picker-header strong {font-size:14px}
+.category-grid {
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;
+}
+.category-grid.collapsed {display:none}
+.category-option {
+  display:flex;align-items:center;gap:8px;
+  padding:9px;background:#1b2735;border:1px solid var(--border);
+  border-radius:9px;color:var(--text);font-size:13px;min-width:0;
+}
+.category-option input {
+  width:19px;height:19px;margin:0;flex-shrink:0;
+  accent-color:var(--accent);
+}
+.category-option span {overflow-wrap:anywhere}
+.category-summary {
+  color:var(--accent);font-size:13px;font-weight:700;margin-top:10px;
+}
+.rule-filter {background:#111c29;border:1px solid var(--border);border-radius:12px;padding:11px 12px;margin:10px 0 14px}
+.rule-filter-toggle {width:100%;text-align:left;padding:9px 10px;font-size:13px}
+.rule-filter-content {display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.rule-filter-content[hidden] {display:none!important}
+.rule-filter-option {display:flex;align-items:center;gap:9px;padding:8px 10px;background:#1b2735;border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px}
+.rule-filter-option input {width:19px;height:19px;margin:0;accent-color:var(--accent)}
+.rulebook-indicator {display:inline-flex;align-items:center;gap:7px;margin:4px 0 12px;padding:8px 12px;border-radius:999px;border:1px solid var(--accent);background:rgba(70,130,180,.13);color:var(--text);font-weight:800;font-size:13px;letter-spacing:.2px}
+.rulebook-indicator[hidden] {display:none!important}
+
+.category-toggle {
+  width:100%;margin-top:10px;padding:10px;font-size:13px;
+  background:#243448;border:1px solid var(--border);
+}
+hr {border:0;border-top:1px solid var(--border);margin:16px 0}
+#notice {
+  min-height:20px;color:var(--green);font-weight:600;
+  font-size:14px;margin-top:4px;
+}
+#authPanel {max-width:420px;margin:30px auto}
+@media(max-width:520px) {
+  body {padding:8px 8px 85px}
+  .panel {padding:12px}
+  h1 {font-size:19px}
+  .signal-image {height:200px}
+  .stat-grid {grid-template-columns:1fr}
+  .category-grid {grid-template-columns:1fr 1fr}
+  .category-picker-header button {font-size:11px!important}
+}
+
+.gc-presentation-item{border:1px solid var(--border,#7775);border-radius:10px;margin:8px 0;padding:10px 12px}
+.gc-presentation-item summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}
+.gc-presentation-item .actions{margin-top:12px}
+.gc-presentations{margin-top:16px}
+.ticket-search-wrap {display:flex;align-items:center;gap:9px;background:#111c29;border:1px solid var(--border);border-radius:10px;padding:7px 11px;margin:10px 0 4px}
+.ticket-search-wrap input {border:0!important;background:transparent!important;padding:7px 2px!important;min-width:0;box-shadow:none!important}
+.ticket-search-hint {font-size:12px;margin:3px 0 12px}
+.ticket-compact {padding:0!important;margin:8px 0!important;overflow:hidden}
+.ticket-compact>summary {cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px}
+.ticket-compact>summary::-webkit-details-marker {display:none}
+.ticket-compact>summary:after {content:"＋";color:var(--accent);font-weight:800;margin-left:auto}
+.ticket-compact[open]>summary:after {content:"−"}
+.ticket-compact .ticket-summary-main {min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ticket-compact .ticket-summary-email {font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.ticket-compact .ticket-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.admin-ticket-section {padding:0!important;margin:10px 0!important;overflow:hidden}
+.admin-ticket-section>summary {cursor:pointer;list-style:none;display:flex;align-items:center;gap:9px;padding:12px 14px;font-weight:800}
+.admin-ticket-section>summary::-webkit-details-marker {display:none}
+.admin-ticket-section>summary:after {content:"＋";margin-left:auto;color:var(--accent);font-weight:900}
+.admin-ticket-section[open]>summary:after {content:"−"}
+.admin-ticket-section-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.ticket-count {font-size:11px;line-height:1;padding:4px 7px;border-radius:99px;background:var(--panel2);color:var(--accent)}
+.admin-ticket-card {margin:8px 0!important;padding:0!important;overflow:hidden}
+.admin-ticket-card>summary {cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px}
+.admin-ticket-card>summary::-webkit-details-marker {display:none}
+.admin-ticket-card>summary:after {content:"＋";margin-left:auto;color:var(--accent);font-weight:900}
+.admin-ticket-card[open]>summary:after {content:"−"}
+.admin-ticket-card .admin-ticket-preview {font-size:12px;color:var(--muted);min-width:0;flex:1 1 100%;overflow-wrap:anywhere}
+.admin-ticket-card .ticket-content {padding:0 10px 10px;border-top:1px solid var(--border)}
+.admin-ticket-category {margin:8px 0!important;padding:0!important;overflow:hidden}
+.admin-ticket-category>summary {cursor:pointer;padding:9px 11px;font-weight:700;list-style:none}
+.admin-ticket-category>summary::-webkit-details-marker {display:none}
+
+.support-ticket {padding:10px;margin:8px 0}
+.support-ticket .support-thread {margin-top:6px!important}
+.group-signal-picker{max-height:52vh;overflow-y:auto;overscroll-behavior:contain;border:1px solid var(--border);border-radius:10px;padding:10px;margin:10px 0;-webkit-overflow-scrolling:touch}
+.group-signal-picker label{display:flex;align-items:flex-start;gap:9px;padding:9px 4px;border-bottom:1px solid var(--border);color:var(--text);overflow-wrap:anywhere}
+.group-signal-picker label:last-child{border-bottom:0}
+.group-signal-picker input[type=checkbox]{width:20px;height:20px;flex:0 0 20px;margin:1px 0 0}
+</style>
+</head>
+
+<body>
+
+<div id="popupBackdrop" hidden></div>
+<div id="broadcastPopup" hidden>
+  <h2 id="popupTitle">Wichtige Information</h2>
+  <p id="popupMessage" style="white-space:pre-wrap;margin-bottom:20px;"></p>
+  <button type="button" class="primary" id="closePopupBtn" style="width:100%;">Verstanden</button>
+</div>
+
+<!-- SEITENLEISTE -->
+<div id="sidebarBackdrop" hidden></div>
+<aside id="sidebar" aria-label="Seitenmenü">
+  <div class="sidebar-header">
+    <strong>GleisCampus</strong>
+    <button type="button" id="closeSidebar" style="padding:6px 10px;">✕</button>
+  </div>
+  <button type="button" class="sidebar-link" data-page="tutorial">📖 Tutorial</button>
+  <button type="button" class="sidebar-link" data-page="friends">👥 Freunde <span id="friendRequestBadge" class="pill-count" hidden>0</span></button>
+  <button type="button" class="sidebar-link" data-page="friendChat">💬 Freundesnachrichten <span id="friendChatBadge" class="pill-count" hidden>0</span></button>
+  <button type="button" class="sidebar-link" data-page="studyGroups">👥 Lerngruppen</button>
+  <button type="button" class="sidebar-link" data-page="flashcards">🗂️ Karteikarten</button>
+  <button type="button" class="sidebar-link" data-page="courses">🎓 Kurse</button>
+  <button type="button" class="sidebar-link" data-page="support">💬 Support</button>
+  <button type="button" class="sidebar-link" data-page="inbox">
+    📬 Postfach <span id="inboxUnreadBadge" class="pill-count" hidden>0</span>
+  </button>
+  <button type="button" class="sidebar-link" data-page="shared">
+    📨 Geteilte Signale <span id="sharedBadge" class="pill-count" hidden>0</span>
+  </button>
+  <button type="button" class="sidebar-link" data-page="imprint">ℹ️ Impressum</button>
+  <div style="margin-top:auto;padding-top:12px;border-top:1px solid var(--border);">
+    <small id="sidebarUserEmail" class="muted" style="display:block;margin-bottom:8px;word-break:break-all;"></small>
+    <div id="trainerStatusContainer" style="margin-top:8px;"></div>
+  </div>
+</aside>
+
+<header>
+  <div class="header-left">
+    <button type="button" id="menuBtn" hidden aria-label="Menü öffnen">
+      ☰ <span id="menuBadgeDot" class="badge-dot" hidden></span>
+    </button>
+    <div>
+      <h1><span aria-hidden="true">🚦</span> <span class="brand">GleisCampus</span></h1>
+      <small style="display:block;margin-bottom:4px;">by Armando</small>
+      <p class="muted" style="margin:0;font-size:13px;">Signale lernen · Gemeinsam üben · Prüfung bestehen</p>
+    </div>
+  </div>
+  <button id="logoutBtn" class="danger" style="display:none;padding:6px 12px;font-size:12px;">Abmelden</button>
+</header>
+
+<div id="notice" aria-live="polite" style="max-width:900px;margin:auto;"></div>
+
+<!-- AUTHENTIFIZIERUNG -->
+<section id="authPanel" class="panel">
+  <div id="loginView">
+    <h2>Anmelden</h2>
+    <label for="loginEmail">E-Mail Adresse</label>
+    <input type="email" id="loginEmail" placeholder="deine@email.de" autocomplete="email">
+    <label for="loginPassword">Passwort</label>
+    <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+    <button type="button" class="primary" id="loginBtn" style="width:100%;">Einloggen</button>
+    <button type="button" class="link-btn" id="showForgotBtn">Passwort vergessen?</button>
+    <hr>
+    <p class="muted" style="text-align:center;font-size:13px;">Noch keinen Zugang?</p>
+    <button type="button" id="showRegisterBtn" style="width:100%;">Registrieren</button>
+  </div>
+
+  <div id="registerView" hidden>
+    <h2>Konto registrieren</h2>
+    <label for="regEmail">E-Mail Adresse</label>
+    <input type="email" id="regEmail" placeholder="deine@email.de" autocomplete="email">
+    <label for="regPassword">Passwort (mind. 6 Zeichen)</label>
+    <input type="password" id="regPassword" placeholder="••••••••" autocomplete="new-password">
+    <label for="regPasswordConfirm">Passwort bestätigen</label>
+    <input type="password" id="regPasswordConfirm" placeholder="••••••••" autocomplete="new-password">
+    <button type="button" class="primary" id="registerBtn" style="width:100%;">Konto erstellen</button>
+    <button type="button" class="link-btn" id="backToLoginFromReg">← Zurück zum Login</button>
+  </div>
+
+  <div id="forgotView" hidden>
+    <h2>Passwort zurücksetzen</h2>
+    <label for="forgotEmail">E-Mail Adresse</label>
+    <input type="email" id="forgotEmail" placeholder="deine@email.de" autocomplete="email">
+    <button type="button" class="primary" id="sendResetBtn" style="width:100%;">Link anfordern</button>
+    <button type="button" class="link-btn" id="backToLoginFromForgot">← Zurück zum Login</button>
+  </div>
+
+  <div id="newPasswordView" hidden>
+    <h2>Neues Passwort festlegen</h2>
+    <label for="newPasswordInput">Neues Passwort (mind. 6 Zeichen)</label>
+    <input type="password" id="newPasswordInput" placeholder="••••••••" autocomplete="new-password">
+    <button type="button" class="primary" id="saveNewPasswordBtn" style="width:100%;">Passwort speichern</button>
+  </div>
+</section>
+
+<main id="appMain" hidden>
+
+<!-- LERNMODUS -->
+<section id="learn" class="page">
+  <div class="panel">
+    <h2>Lernmodus</h2>
+    <p class="muted">Wähle aus, welche Signalgruppen du lernen möchtest.</p>
+
+    <div class="category-picker">
+      <div class="category-picker-header">
+        <strong>Signalgruppen auswählen</strong>
+        <button type="button" id="learnSelectAll" style="padding:7px 10px;font-size:12px;">Alle auswählen</button>
+      </div>
+      <div id="learnCategoryChoices" class="category-grid collapsed"></div>
+      <div id="learnCategorySummary" class="category-summary"></div>
+      <button type="button" class="category-toggle" id="learnToggleCategories">
+        Signalgruppen auswählen ▼
+      </button>
+    </div>
+
+    <div class="rule-filter">
+      <button type="button" class="rule-filter-toggle" id="learnRuleFilterToggle" aria-expanded="false">Regelwerk filtern (optional) ▼</button>
+      <div class="rule-filter-content" id="learnRuleFilterContent" hidden>
+        <label class="rule-filter-option"><input type="checkbox" id="learnDs301" checked> DS 301</label>
+        <label class="rule-filter-option"><input type="checkbox" id="learnDv301" checked> DV 301</label>
+        <label class="rule-filter-option"><input type="checkbox" id="learnUnassigned" checked> Nicht zugeordnet</label>
+      </div>
+    </div>
+
+    <label class="filter-box" for="onlyWrongFilter">
+      <input type="checkbox" id="onlyWrongFilter">
+      <span>🎯 Nur falsch beantwortete Signale üben (<b id="wrongCount">0</b>)</span>
+    </label>
+
+    <div class="row">
+      <div>
+        <label>Fortschritt</label>
+        <strong id="learnCounter" style="display:block;margin-top:12px;">Frage 1</strong>
+      </div>
+      <div>
+        <label>Verfügbare Signale</label>
+        <strong id="learnAvailable" style="display:block;margin-top:12px;">0</strong>
+      </div>
+    </div>
+
+    <div class="progress"><span id="learnProgress"></span></div>
+
+    <div id="learnRulebookIndicator" class="rulebook-indicator" role="status" aria-live="polite" hidden></div>
+    <img id="learnImage" class="signal-image" alt="Signalbild" hidden>
+    <div id="learnNoImage" class="placeholder">Kein Signalbild hinterlegt</div>
+
+    <div class="learn-mode-switch" style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0;">
+      <button type="button" id="learnModeText" class="primary">✍️ Selbst eingeben</button>
+      <button type="button" id="learnModeChoice">☑️ Auswahlaufgaben</button>
+    </div>
+    <div id="learnTextMode">
+      <p><b>Erkenne das Signal. Trage alle drei Angaben selbst ein:</b></p>
+      <label for="learnShort">1. Kurzbezeichnung</label>
+      <input id="learnShort" placeholder="z. B. Ne 1" autocomplete="off">
+      <label for="learnLong">2. Langbezeichnung</label>
+      <input id="learnLong" placeholder="z. B. Trapeztafel" autocomplete="off">
+      <label for="learnMeaning">3. Bedeutung</label>
+      <textarea id="learnMeaning" placeholder="Vollständige Bedeutung des Signals..."></textarea>
+    </div>
+    <div id="learnChoiceMode" hidden>
+      <p><b>Erkenne das Signalbild und wähle jeweils genau eine richtige Antwort.</b></p>
+      <div id="learnChoiceQuestions"></div>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="primary" id="checkLearn">Antwort prüfen</button>
+      <button type="button" id="skipLearn">Überspringen</button>
+    </div>
+    <div id="learnFeedback" class="answer" hidden></div>
+    <button type="button" class="good" id="nextLearn" hidden style="width:100%;margin-top:12px;">Nächstes Signal ➔</button>
+  </div>
+</section>
+
+<!-- PRÜFUNGSMODUS -->
+<section id="exam" class="page" hidden>
+  <div class="panel">
+    <h2>Prüfungsmodus</h2>
+    <div id="examConfig">
+      <div class="category-picker">
+        <div class="category-picker-header">
+          <strong>Signalgruppen auswählen</strong>
+          <button type="button" id="examSelectAll" style="padding:7px 10px;font-size:12px;">Alle auswählen</button>
+        </div>
+        <div id="examCategoryChoices" class="category-grid collapsed"></div>
+        <div id="examCategorySummary" class="category-summary"></div>
+        <button type="button" class="category-toggle" id="examToggleCategories">
+          Signalgruppen auswählen ▼
+        </button>
+      </div>
+
+      <div class="rule-filter">
+        <button type="button" class="rule-filter-toggle" id="examRuleFilterToggle" aria-expanded="false">Regelwerk filtern (optional) ▼</button>
+        <div class="rule-filter-content" id="examRuleFilterContent" hidden>
+          <label class="rule-filter-option"><input type="checkbox" id="examDs301" checked> DS 301</label>
+          <label class="rule-filter-option"><input type="checkbox" id="examDv301" checked> DV 301</label>
+          <label class="rule-filter-option"><input type="checkbox" id="examUnassigned" checked> Nicht zugeordnet</label>
+        </div>
+      </div>
+
+      <label for="examLength">Anzahl der Fragen</label>
+      <select id="examLength">
+        <option value="10">10 Fragen</option>
+        <option value="20">20 Fragen</option>
+        <option value="30">30 Fragen</option>
+        <option value="50">50 Fragen</option>
+      </select>
+      <button type="button" class="primary" id="startExam" style="width:100%;margin-top:8px;">Prüfung starten</button>
+      <div id="examAvailable" class="muted" style="margin-top:10px;"></div>
+    </div>
+
+    <div id="examArea" hidden>
+      <button type="button" class="danger" id="cancelExam" style="width:100%;margin-bottom:12px">✕ Prüfung abbrechen</button>
+      <hr>
+      <div class="row">
+        <strong id="examCounter">Frage 1</strong>
+        <strong id="examTimer" style="text-align:right;">00:00</strong>
+      </div>
+      <div class="progress"><span id="examProgress"></span></div>
+
+      <div id="examRulebookIndicator" class="rulebook-indicator" role="status" aria-live="polite" hidden></div>
+      <img id="examImage" class="signal-image" alt="Signalbild" hidden>
+      <div id="examNoImage" class="placeholder" hidden>Kein Signalbild hinterlegt</div>
+
+      <label for="examShort">1. Kurzbezeichnung</label>
+      <input id="examShort" placeholder="Kurzbezeichnung" autocomplete="off">
+      <label for="examLong">2. Langbezeichnung</label>
+      <input id="examLong" placeholder="Langbezeichnung" autocomplete="off">
+      <label for="examMeaning">3. Bedeutung</label>
+
+      <textarea id="examMeaning" placeholder="Bedeutung des Signals"></textarea>
+
+      <button type="button" class="primary" id="submitExam" style="width:100%;">Antwort abgeben</button>
+      <div id="examFeedback" class="answer" hidden></div>
+      <button type="button" id="examNext" hidden style="width:100%;margin-top:12px;">Weiter ➔</button>
+    </div>
+
+    <div id="examResult" class="answer" hidden></div>
+  </div>
+</section>
+
+<!-- STATISTIK -->
+<section id="stats" class="page" hidden>
+  <div class="panel">
+    <h2>Deine Lernstatistik</h2>
+    <div class="stat-grid">
+      <div class="stat">Beantwortete Fragen<strong id="statAnswered">0</strong></div>
+      <div class="stat">Erreichte Punkte<strong id="statPoints">0</strong></div>
+      <div class="stat">Punktequote<strong id="statRate">0 %</strong></div>
+      <div class="stat">Absolvierte Prüfungen<strong id="statExams">0</strong></div>
+    </div>
+    <hr>
+    <h3>Letztes Prüfungsergebnis</h3>
+    <div id="lastExamResult" class="muted">Noch keine Prüfung absolviert.</div>
+    <button type="button" class="danger" id="resetStats" style="width:100%;margin-top:14px;">Statistik & Fehlerliste zurücksetzen</button>
+  </div>
+</section>
+
+<!-- FREUNDE -->
+<section id="friends" class="page" hidden>
+  <div class="panel">
+    <h2>👥 Freunde & Kontakte</h2>
+    <p class="muted">Füge Kollegen per E-Mail hinzu, um Lerngruppen zu gründen oder Signale zu teilen.</p>
+
+    <label for="friendEmail">E-Mail-Adresse des Kollegen</label>
+    <input type="email" id="friendEmail" list="userAutocompleteList" placeholder="kollege@email.de" autocomplete="off">
+    <button type="button" class="primary" id="sendFriendRequestBtn" style="width:100%;">Freundschaftsanfrage senden</button>
+
+    <hr>
+    <h3>Anfragen & Freunde</h3>
+    <div id="friendRequestsList"><p class="muted">Lade Freunde...</p></div>
+    <button type="button" id="refreshFriends" style="width:100%;margin-top:10px">↻ Freunde aktualisieren</button>
+  </div>
+</section>
+
+<!-- PRIVATER FREUNDESCHAT – getrennt von Support und Trainerpostfach -->
+<section id="friendChat" class="page" hidden>
+  <div class="panel">
+    <h2>💬 Freundesnachrichten</h2>
+    <p class="muted">Private Nachrichten nur zwischen bestätigten Freunden. Support- und Trainernachrichten bleiben im bisherigen Postfach.</p>
+    <label for="chatFriend">Mit welchem Freund schreiben?</label>
+    <select id="chatFriend"><option value="">Freund auswählen</option></select>
+    <h3>📨 Ungelesene Nachrichten</h3><div id="chatUnreadSenders" class="panel"><p class="muted">Keine ungelesenen Nachrichten.</p></div><div id="chatHistory" style="max-height:430px;overflow-y:auto;margin:12px 0;padding:8px;background:#111c29;border-radius:10px" aria-live="polite"><p class="muted">Bitte Freund auswählen.</p></div>
+    <label for="chatText">Deine Nachricht</label>
+    <textarea id="chatText" maxlength="4000" placeholder="Nachricht schreiben..."></textarea>
+    <button type="button" class="primary" id="sendChat" style="width:100%">Nachricht senden</button>
+    <button type="button" id="refreshChat" style="width:100%;margin-top:8px">↻ Nachrichten aktualisieren</button>
+  </div>
+</section>
+
+<!-- LERNGRUPPEN -->
+<section id="studyGroups" class="page" hidden>
+  <div class="panel">
+    <h2>👥 Lerngruppen</h2>
+    <p class="muted">Lerne gemeinsam mit Kollegen in Lerngruppen abseits deines privaten Bereichs.</p>
+
+    <div class="actions">
+      <button type="button" class="primary" id="showCreateGroupBtn">+ Neue Lerngruppe erstellen</button>
+    </div>
+
+    <div id="createGroupForm" class="panel" style="margin-top:14px;" hidden>
+      <h3>Lerngruppe erstellen</h3>
+      <label for="newGroupName">Gruppenname</label>
+      <input id="newGroupName" placeholder="z. B. Azubi-Klasse 2026">
+      <button type="button" class="primary" id="createGroupSubmit">Gruppe anlegen</button>
+      <button type="button" id="cancelCreateGroup">Abbrechen</button>
+    </div>
+
+    <hr>
+    <div id="myStudyGroupsList"><p class="muted">Lade Lerngruppen...</p></div>
+  </div>
+</section>
+
+<!-- EINZELNE LERNGRUPPEN-ANSICHT -->
+<section id="groupDetail" class="page" hidden>
+  <div class="panel">
+    <button type="button" id="backToGroups" style="margin-bottom:12px;">← Zurück zu Lerngruppen</button>
+    <h2 id="groupDetailTitle">Lerngruppe</h2>
+    <p class="muted" id="groupDetailCreator"></p>
+
+    <div class="actions" style="margin-bottom:14px;">
+      <button type="button" class="primary" id="groupInviteBtn">＋ Mitglied einladen</button>
+      <button type="button" id="groupManageMembersBtn">⚙️ Mitglieder & Rechte</button>
+      <button type="button" class="primary good" id="groupLearnBtn">📚 Gruppe lernen</button>
+    </div>
+
+    <hr>
+    <h3>Signale der Lerngruppe (<span id="groupSignalCount">0</span>)</h3>
+    <div class="actions">
+      <button type="button" class="primary" id="groupAddSignalBtn" hidden>+ Signal zur Gruppe hinzufügen</button>
+    </div>
+    <div id="groupSignalsList" style="margin-top:12px;"><p class="muted">Keine Signale in der Gruppe.</p></div>
+  </div>
+</section>
+
+<!-- KURSE (TRAINER & SCHÜLER) -->
+<section id="courses" class="page" hidden>
+  <div class="panel">
+    <h2>🎓 Kurse & Schulungen</h2>
+    <p class="muted">Nimm als Schüler an Kursen teil oder erstelle als freigeschalteter Trainer Schulungen für deine Teilnehmer.</p>
+
+    <div id="trainerActionBox" style="margin-bottom:14px;" hidden>
+      <button type="button" class="primary" id="createCourseBtn">+ Neuen Kurs erstellen</button>
+    </div>
+
+    <div id="createCourseForm" class="panel" hidden>
+      <h3>Kurs erstellen</h3>
+      <label for="courseNameInput">Kursname</label>
+      <input id="courseNameInput" placeholder="z. B. Signalbuch Ril 301 Intensiv">
+      <button type="button" class="primary" id="submitCreateCourse">Kurs anlegen</button>
+      <button type="button" id="cancelCreateCourse">Abbrechen</button>
+    </div>
+
+    <hr>
+    <h3>Deine Kurse</h3>
+    <div id="myCoursesList"><p class="muted">Lade Kurse...</p></div>
+  </div>
+</section>
+
+<!-- EINZELNER KURS ANSICHT -->
+<section id="courseDetail" class="page" hidden>
+  <div class="panel">
+    <button type="button" id="backToCourses" style="margin-bottom:12px;">← Zurück zu Kursen</button>
+    <h2 id="courseDetailTitle">Kurs</h2>
+    <p class="muted" id="courseDetailTrainer"></p>
+
+    <div id="trainerCourseControls" hidden style="margin-bottom:14px;">
+      <button type="button" class="primary" id="courseAddCoTrainerBtn">＋ Co-Trainer einladen</button>
+       <button type="button" class="primary" id="courseAddMemberBtn">＋ Schüler hinzufügen</button>
+      <button type="button" class="primary" id="courseAddMaterialBtn">📄 Aufgabe / Dokument hochladen</button>
+      <button type="button" class="primary" id="courseAddHomeworkBtn">📋 Hausaufgabe aufgeben</button>
+      <button type="button" class="primary" id="coursePopupBtn">📢 Popup an Kurs senden</button>
+    </div>
+
+    <div id="adminCourseManagement" class="panel" hidden>
+      <h3>🛡️ Admin: Kursverwaltung</h3>
+      <p class="muted">Funktionen und Upload-Rechte für diesen Kurs getrennt steuern.</p>
+      <label class="filter-box"><input type="checkbox" id="adminEnablePresentations"> Präsentationsfunktion für diesen Kurs freischalten</label>
+      <label class="filter-box"><input type="checkbox" id="adminLockPresentations"> Präsentations-Uploads sperren</label>
+      <label class="filter-box"><input type="checkbox" id="adminLockFiles"> Normale Datei-Uploads sperren</label>
+      <button type="button" class="primary" id="adminSaveCourseLocks" style="width:100%">Kurseinstellungen speichern</button>
+      <div id="adminCourseManageList" style="margin-top:14px"><p class="muted">Lade Kursinhalte …</p></div>
+    </div>
+
+    <hr>
+    <section class="gc-presentations panel" id="gcPresentationsSection" aria-label="Kurspräsentationen" hidden>
+      <h3>🖥️ Interaktive Kurspräsentationen</h3>
+      <p class="muted">Im Kurs öffnen oder für die Offline-Nutzung auf diesem Gerät vormerken. Es werden nur eigenständige HTML-Webpräsentationen unterstützt (noch keine automatische PowerPoint-Umwandlung).</p>
+      <div id="gcPresentationTrainer" hidden>
+        <label>Titel <input id="gcPresentationTitle" maxlength="140" placeholder="z. B. Signalbuch – Grundlagen"></label>
+        <label>Interaktive HTML-Präsentation (eine vollständige .html-Datei, maximal 10 MB) <input id="gcPresentationFile" type="file" accept=".html,text/html"></label>
+        <button class="primary" id="gcPresentationUpload" type="button">Präsentation hochladen</button>
+      </div>
+      <p id="gcPresentationUsage" class="muted"></p>
+      <div id="gcPresentationList"><p class="muted">Lade Präsentationen …</p></div>
+    </section>
+    <hr>
+    <h3>📚 Lernmaterialien & Aufgaben</h3>
+    <div id="courseMaterialsList"><p class="muted">Keine Materialien vorhanden.</p></div>
+
+    <hr>
+    <h3>📋 Hausaufgaben</h3>
+    <div id="courseHomeworkList"><p class="muted">Keine Hausaufgaben aufgegeben.</p></div>
+  </div>
+</section>
+
+<!-- TUTORIAL -->
+<section id="tutorial" class="page" hidden>
+  <div class="panel">
+    <h2 id="tutorialTitle">📖 Dein Tutorial</h2>
+    <p class="muted" id="tutorialIntro">Anleitung für deine verfügbaren Funktionen.</p>
+    <div id="tutorialContent"></div>
+  </div>
+</section>
+
+<!-- SUPPORT -->
+<section id="support" class="page" hidden>
+  <div class="panel">
+    <h2>💬 Support & Feedback</h2>
+    <label for="supportCategory">Grund deiner Nachricht</label>
+    <select id="supportCategory">
+      <option value="Problem">⚠️ Problem melden</option>
+      <option value="Bewertung">⭐ Bewertung abgeben</option>
+      <option value="Verbesserungsvorschlag">💡 Verbesserungsvorschlag</option>
+    </select>
+    <label for="supportMessage">Deine Nachricht</label>
+    <textarea id="supportMessage" placeholder="Beschreibe dein Anliegen..."></textarea>
+    <button type="button" class="primary" id="sendSupportBtn" style="width:100%;">Nachricht absenden</button>
+  </div>
+</section>
+
+<!-- POSTFACH -->
+<section id="inbox" class="page" hidden>
+  <div class="panel">
+    <div class="row" style="align-items:center;">
+      <div>
+        <h2 style="margin-bottom:4px;">📬 Dein Postfach</h2>
+        <p class="muted" style="margin:0;">Support-Antworten & Direktnachrichten vom Trainer</p>
+      </div>
+      <button type="button" id="refreshInboxBtn" style="flex:0 0 auto;">↻ Aktualisieren</button>
+    </div>
+    <hr>
+    <div id="userInboxList"><p class="muted">Lade Nachrichten...</p></div>
+  </div>
+</section>
+
+<!-- GETEILTE SIGNALE -->
+<section id="shared" class="page" hidden>
+  <div class="panel">
+    <h2>📨 Geteilte Signale</h2>
+    <div id="sharedBulkActions" class="bulk-toolbar" hidden>
+      <div id="sharedPendingCount" class="selection-count"></div>
+      <div id="sharedBulkProgress" class="gc-progress" hidden aria-live="polite"><span class="gc-spinner"></span><span id="sharedBulkProgressText">Bitte warten …</span></div>
+      <div class="actions">
+        <button type="button" class="good" id="acceptAllShared">✓ Alle übernehmen</button>
+        <button type="button" class="danger" id="rejectAllShared">✕ Alle ablehnen</button>
+      </div>
+    </div>
+    <div id="sharedSignalsList"><p class="muted">Keine geteilten Signale vorhanden.</p></div>
+  </div>
+</section>
+
+<!-- VERWALTUNG -->
+<section id="manage" class="page" hidden>
+
+  <div class="panel" id="adminTrainerOverviewPanel" hidden>
+    <h2>👥 Trainer- und Kursverwaltung</h2>
+    <p class="muted">Alle freigeschalteten Trainer anzeigen, deren Kurse öffnen und Kursinhalte zentral verwalten.</p>
+    <div class="ticket-search-wrap"><span aria-hidden="true">🔎</span><input type="search" id="adminTrainerSearch" placeholder="Trainer oder Kurs suchen …" autocomplete="off"></div>
+    <div id="adminTrainerOverviewList"><p class="muted">Lade Trainer …</p></div>
+    <div id="adminTrainerCourses" hidden></div>
+  </div>
+
+  <div class="panel" id="adminTrainerPanel" hidden>
+    <h2 style="margin-bottom:4px;">🛡️ Trainer-Anträge verwalten</h2>
+    <div id="adminTrainerRequestsList"><p class="muted">Lade Anträge...</p></div>
+  </div>
+
+  <div class="panel" id="adminBroadcastPanel" hidden>
+    <h2 style="margin-bottom:4px;">📢 Bildschirm-Nachricht senden</h2>
+    <label for="bcTarget">Empfänger</label>
+    <select id="bcTarget">
+      <option value="all">An alle registrierten Nutzer</option>
+      <option value="specific">An bestimmte E-Mail(s)</option>
+    </select>
+    <div id="bcEmailsContainer" hidden>
+      <label for="bcEmails">E-Mail-Adressen (Komma-getrennt)</label>
+      <input id="bcEmails" list="userAutocompleteList" placeholder="kollege1@email.de">
+    </div>
+    <label for="bcTitle">Titel</label>
+    <input id="bcTitle" placeholder="Titel">
+    <label for="bcMessage">Nachricht</label>
+    <textarea id="bcMessage" placeholder="Nachricht..."></textarea>
+    <button type="button" class="primary" id="sendBroadcastBtn" style="width:100%;">Abschicken</button>
+  </div>
+
+  <div class="panel" id="adminStatsPanel" hidden>
+    <div class="row" style="align-items:center;">
+      <div><h2 style="margin-bottom:4px;">📈 Nutzerstatistik</h2></div>
+      <button type="button" id="refreshAdminStats" style="flex:0 0 auto;">↻</button>
+    </div>
+    <div class="stat-grid" style="margin-top:14px;">
+      <div class="stat">Gerade online<strong id="adminOnline">–</strong></div>
+      <div class="stat">Heute aktiv<strong id="adminToday">–</strong></div>
+      <div class="stat">7 Tage<strong id="adminWeek">–</strong></div>
+      <div class="stat">30 Tage<strong id="adminMonth">–</strong></div>
+      <div class="stat">Registriert<strong id="adminTotal">–</strong></div>
+    </div>
+  </div>
+
+  <div class="panel" id="adminSupportPanel" hidden>
+    <h2>📨 Support & Ticket-Postfach</h2>
+    <div class="ticket-search-wrap"><span aria-hidden="true">🔎</span><input type="search" id="adminTicketSearch" placeholder="Tickets suchen: E-Mail, Anliegen, Nachricht oder ID …" autocomplete="off"></div>
+    <p class="muted ticket-search-hint">Die Suche filtert offene, beantwortete und geschlossene Tickets.</p>
+    <details class="panel admin-ticket-section" id="adminOpenSection">
+      <summary>📥 Offene Anfragen <span class="ticket-count" id="adminOpenCount">0</span></summary>
+      <div class="admin-ticket-section-content" id="adminSupportList"><p class="muted">Lade Anfragen...</p></div>
+    </details>
+    <details class="panel admin-ticket-section" id="adminAnsweredSection">
+      <summary>📁 Beantwortete Tickets – Postfach <span class="ticket-count" id="adminAnsweredCount">0</span></summary>
+      <p class="muted">Nach Anliegen sortiert. Nutzer können hierauf weiter antworten, bis du das Ticket schließt.</p>
+      <div class="admin-ticket-section-content" id="adminAnsweredFolders"><p class="muted">Lade Postfach...</p></div>
+    </details>
+    <details class="panel admin-ticket-section" id="adminClosedSection">
+      <summary>🔒 Geschlossene Tickets <span class="ticket-count" id="adminClosedCount">0</span></summary>
+      <div class="admin-ticket-section-content" id="adminClosedTickets"><p class="muted">Lade Tickets...</p></div>
+    </details>
+  </div>
+
+  <div class="panel">
+    <h2 id="formTitle">Signal hinzufügen</h2>
+    <input type="hidden" id="editId">
+    <label for="shortName">Kurzbezeichnung</label>
+    <input id="shortName" placeholder="z. B. Lf 1">
+    <label for="longName">Langbezeichnung</label>
+    <input id="longName" placeholder="z. B. Trapeztafel">
+    <label for="meaning">Bedeutung</label>
+    <textarea id="meaning" placeholder="Vollständige Bedeutung..."></textarea>
+    <label>Kategorien (mehrere auswählbar)</label>
+    <div id="signalCategoryChoices" class="category-grid" style="margin:6px 0 14px;"></div>
+    <label for="regelwerk">Regelwerk (optional)</label>
+    <select id="regelwerk">
+      <option value="">Nicht zugeordnet</option>
+      <option value="DS301">DS 301</option>
+      <option value="DV301">DV 301</option>
+    </select>
+    <label for="imageUrl">Bild-URL (optional)</label>
+    <input id="imageUrl" placeholder="https://...">
+    <div class="actions">
+      <button type="button" id="pickGallery">🖼️ Galerie</button>
+      <button type="button" id="pickCamera">📸 Kamera</button>
+    </div>
+    <input type="file" id="imageFile" accept="image/*" hidden>
+    <input type="file" id="cameraFile" accept="image/*" capture="environment" hidden>
+    <div class="actions" style="margin-top:12px;">
+      <button type="button" class="primary" id="saveSignal">Signal speichern</button>
+      <button type="button" id="clearForm">Formular leeren</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>Gespeicherte Signale: <span id="signalCount" class="brand">0</span></h3>
+    <input id="searchSignals" placeholder="Signal suchen...">
+    <div class="bulk-toolbar">
+      <div class="signal-select-row">
+        <label><input type="checkbox" id="selectAllSignals"> Alle auswählen</label>
+      </div>
+      <div class="actions">
+        <button type="button" id="clearSelection">Aufheben</button>
+        <button type="button" class="primary" id="shareSelected" disabled>📨 Teilen</button>
+        <button type="button" class="danger" id="deleteSelected" disabled>🗑 Löschen</button>
+      </div>
+      <div id="selectionCount" class="selection-count">0 ausgewählt</div>
+    </div>
+    <div id="signalList"></div>
+  </div>
+
+  <div class="panel">
+    <h2>Datensicherung</h2>
+    <div class="actions">
+      <button type="button" id="exportData">Daten exportieren</button>
+      <button type="button" id="importButton">Daten importieren</button>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+</section>
+<!-- EIGENSTÄNDIGES KARTEIKARTEN-LERNSYSTEM -->
+<section id="flashcards" class="page" hidden>
+  <div class="panel">
+    <h2>🗂️ Karteikarten lernen</h2>
+    <p class="muted">Erstelle private Kartensätze, lerne sie und teile sie gezielt per E-Mail – ohne öffentliche Sammlung.</p>
+    <label for="fcSetTitle">Name des Kartensatzes</label>
+    <input id="fcSetTitle" maxlength="100" placeholder="z. B. Grundlagen Elektrotechnik">
+    <label for="fcSetDescription">Beschreibung (optional)</label>
+    <textarea id="fcSetDescription" maxlength="500" rows="2" placeholder="Worum geht es in diesem Kartensatz?"></textarea>
+    <button type="button" class="primary" id="fcCreateSet">+ Kartensatz erstellen</button>
+  </div>
+  <div class="panel">
+    <h3>Meine Kartensätze</h3>
+    <div id="fcMySets"><p class="muted">Lade Kartensätze …</p></div>
+  </div>
+  <div class="panel">
+    <h3>📨 Mit mir geteilte Kartensätze</h3>
+    <div id="fcSharedSets"><p class="muted">Lade Freigaben …</p></div>
+  </div>
+  <div class="panel" id="fcEditorPanel" hidden>
+    <h3 id="fcEditorTitle">Kartensatz bearbeiten</h3>
+    <input type="hidden" id="fcEditingSetId">
+    <label for="fcQuestion">Vorderseite / Frage</label>
+    <textarea id="fcQuestion" rows="2" maxlength="2000" placeholder="Frage oder Begriff"></textarea>
+    <label for="fcAnswer">Rückseite / Antwort</label>
+    <textarea id="fcAnswer" rows="3" maxlength="5000" placeholder="Antwort oder Erklärung"></textarea>
+    <label for="fcImageUrl">Bild-URL (optional)</label>
+    <input id="fcImageUrl" type="url" placeholder="https://…">
+    <div class="actions"><button type="button" class="primary" id="fcAddCard">Karte hinzufügen</button><button type="button" id="fcCancelEdit">Schließen</button></div>
+    <div id="fcCardsList"></div>
+  </div>
+  <div class="panel" id="fcStudyPanel" hidden>
+    <h3 id="fcStudyTitle">Lernen</h3>
+    <div id="fcStudyProgress" class="muted"></div>
+    <div id="fcStudyCard" class="signal-card" style="min-height:190px;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:12px;cursor:pointer" role="button" tabindex="0">
+      <div id="fcStudyFace" style="font-size:20px;font-weight:700;white-space:pre-wrap"></div>
+      <img id="fcStudyImage" alt="Karteikartenbild" hidden style="max-width:100%;max-height:220px;object-fit:contain;border-radius:10px">
+      <small id="fcStudyHint" class="muted">Tippen zum Umdrehen</small>
+    </div>
+    <div class="actions" style="margin-top:12px"><button type="button" id="fcFlip">Antwort aufdecken</button><button type="button" class="danger" id="fcAgain">Noch nicht gewusst</button><button type="button" class="good" id="fcKnown">Gewusst</button></div>
+    <button type="button" id="fcStopStudy" style="width:100%;margin-top:8px">Lernen beenden</button>
+  </div>
+</section>
+
+<!-- IMPRESSUM – ENTWURF -->
+<section id="imprint" class="page" hidden>
+  <div class="panel">
+    <h2>Impressum</h2>
+
+    <p><strong>Angaben gemäß § 5 DDG</strong></p>
+
+    <p>
+      <strong>Dominique Aghabozorgi</strong><br>
+      GleisCampus
+    </p>
+
+    <p>
+      <strong>Kontakt:</strong><br>
+      E-Mail:
+      <a href="mailto:GleisCampus@outlook.de"
+         style="color:var(--accent)">
+        GleisCampus@outlook.de
+      </a>
+    </p>
+
+    <p class="muted">
+      Hinweis: Das Impressum ist noch unvollständig und wird derzeit
+      überarbeitet.
+    </p>
+  </div>
+</section>
+<!-- Dialog zum Teilen mit E-Mail-Vorschlägen bestätigter Freunde -->
+<dialog id="shareDialog" style="width:min(95vw,470px);background:#1b2735;color:#f3f6fa;border:1px solid #48a6ff;border-radius:14px;padding:18px">
+  <h3>📨 Signal(e) teilen</h3>
+  <p id="shareDialogInfo" class="muted"></p>
+  <div id="shareProgress" class="gc-progress" hidden aria-live="polite"><span class="gc-spinner"></span><span id="shareProgressText">Signale werden gesendet …</span></div>
+  <label for="shareRecipient">E-Mail-Adresse des Empfängers</label>
+  <input id="shareRecipient" list="friendEmailSuggestions" type="email" placeholder="Zum Beispiel Andr..." autocomplete="off">
+  <datalist id="friendEmailSuggestions"></datalist>
+  <p class="muted">Vorschläge erscheinen beim Tippen für bestätigte Freunde.</p>
+  <div class="actions"><button type="button" id="cancelShareDialog">Abbrechen</button><button type="button" class="primary" id="confirmShareDialog">Teilen</button></div>
+</dialog>
+</main>
+
+<!-- DATALIST FÜR E-MAIL AUTO-VERVOLLSTÄNDIGUNG -->
+<datalist id="userAutocompleteList"></datalist>
+
+<nav id="mainNav" hidden>
+  <button type="button" class="active" data-page="learn"><span class="icon">📚</span><span>Lernen</span></button>
+  <button type="button" data-page="exam"><span class="icon">📝</span><span>Prüfung</span></button>
+  <button type="button" data-page="stats"><span class="icon">📊</span><span>Statistik</span></button>
+  <button type="button" data-page="manage"><span class="icon">⚙️</span><span>Verwaltung</span></button>
+</nav>
+
+<script>
+(function(){
+"use strict";
+
+const SUPABASE_URL="https://iefvluyvbiusrbccoaju.supabase.co";
+const SUPABASE_ANON_KEY="sb_publishable_P-Vg2K2OqNux57j58aBDGg_NOKpLOS1";
+const _supabase=supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+const $=id=>document.getElementById(id);
+
+const ADMIN_EMAIL="Dominique.aghabozorgi@yahoo.com";
+let currentUser=null;
+let activityInterval=null;
+let activityErrorShown=false;
+
+let allRegisteredUsers=[];
+let signals=[];
+let stats=JSON.parse(localStorage.getItem("armando_signal_stats")||'{"answered":0,"points":0,"exams":0,"lastExam":null}');
+let wrongSignalIds=new Set(JSON.parse(localStorage.getItem("armando_wrong_signals")||"[]"));
+let current=null;
+let learnNumber=0;
+let learnDone=false;
+let learnAnswerMode="text";
+let learnChoiceSets=[];
+let tempImageBase64="";
+let imageLoadToken=0;
+let selectedSignalIds=new Set();
+let bulkDeleteRunning=false;
+let exportRunning=false;
+let confirmedFriendEmails=[];
+let friendRefreshTimer=null;
+let chatTableAvailable=true;
+let sharePendingSignals=[];
+
+let activeGroupId=null;
+let activeCourseId=null;
+
+const BASE_CATEGORIES=["Lf","Bü","Ne","Hp","Vr","Ks","Hl","Sh","Ra","Zs","El","So","Wn","Zp","Zg","Ts","Mastschilder","Sonstige"];
+const CATEGORY_LABELS={"Lf":"Lf – Langsamfahrsignale","Bü":"Bü – Bahnübergangssignale","Ne":"Ne – Nebensignale","Hp":"Hp – Hauptsignale","Vr":"Vr – Vorsignale","Ks":"Ks – Kombinationssignale","Hl":"Hl – Hl-Signale","Sh":"Sh – Schutzsignale","Ra":"Ra – Rangiersignale","Zs":"Zs – Zusatzsignale","El":"El – Fahrleitungssignale","So":"So – Sonstige Signale","Wn":"Wn – Weichensignale","Zp":"Zp – Zugpersonalsignale","Zg":"Zg – Zugbegleitersignale","Ts":"Ts – Türen- und sonstige Betriebssignale","Mastschilder":"Mastschilder","Sonstige":"Sonstige"};
+function getSignalCategories(signalOrValue){
+  const raw=typeof signalOrValue==="string"?signalOrValue:(signalOrValue?.category||"");
+  if(!raw)return ["Sonstige"];
+  try{
+    const parsed=JSON.parse(raw);
+    if(Array.isArray(parsed))return [...new Set(parsed.map(v=>String(v).trim()).filter(Boolean))];
+  }catch(_){ }
+  return [String(raw).trim()||"Sonstige"];
+}
+function allKnownSignalCategories(){
+  return [...new Set([...BASE_CATEGORIES,...signals.flatMap(s=>getSignalCategories(s))])];
+}
+function renderSignalCategoryChoices(selected=[]){
+  const chosen=new Set(selected);
+  $("signalCategoryChoices").innerHTML=allKnownSignalCategories().map(c=>
+    `<label class="category-option"><input type="checkbox" value="${esc(c)}" ${chosen.has(c)?"checked":""}><span>${esc(CATEGORY_LABELS[c]||c)}</span></label>`
+  ).join("");
+}
+function selectedSignalFormCategories(){
+  return [...$("signalCategoryChoices").querySelectorAll('input[type="checkbox"]:checked')].map(el=>el.value);
+}
+
+
+let selectedLearnCategories=new Set(BASE_CATEGORIES);
+let selectedExamCategories=new Set(BASE_CATEGORIES);
+let knownCategories=new Set(BASE_CATEGORIES);
+let learnCategoriesOpen=false;
+let examCategoriesOpen=false;
+let userRole="user";
+
+function saveLocalProgress(){
+  localStorage.setItem("armando_signal_stats",JSON.stringify(stats));
+  localStorage.setItem("armando_wrong_signals",JSON.stringify([...wrongSignalIds]));
+  if($("wrongCount"))$("wrongCount").textContent=wrongSignalIds.size;
+  renderLearningStats();
+}
+
+function notify(message){
+  const el=$("notice");
+  if(!el)return;
+  el.textContent=message;
+  setTimeout(()=>{if(el.textContent===message)el.textContent="";},5000);
+}
+
+function renderLearningStats(){
+  const answered=Number(stats.answered)||0,points=Number(stats.points)||0;
+  if($("statAnswered"))$("statAnswered").textContent=answered;
+  if($("statPoints"))$("statPoints").textContent=points;
+  if($("statRate"))$("statRate").textContent=(answered?Math.round(points/answered*100):0)+" %";
+  if($("statExams"))$("statExams").textContent=Number(stats.exams)||0;
+  if($("lastExamResult")){
+    const r=stats.lastExam;
+    $("lastExamResult").textContent=r?`${r.correct} von ${r.total} richtig (${r.percentage} %) – ${new Date(r.date).toLocaleString("de-DE")}`:"Noch keine Prüfung absolviert.";
+  }
+}
+
+/* =====================================================
+   NUTZERAKTIVITÄT
+   ===================================================== */
+
+async function updateLastSeen(){
+  if(!currentUser)return;
+
+  try{
+    const {error}=await _supabase
+      .from("user_profiles")
+      .update({last_seen:new Date().toISOString()})
+      .eq("id",currentUser.id);
+
+    if(error){
+      console.error("Aktivität konnte nicht gespeichert werden:",error);
+
+      if(!activityErrorShown){
+        activityErrorShown=true;
+        notify("Aktivität konnte nicht gespeichert werden. Bitte Datenbankrechte prüfen.");
+      }
+    }else{
+      activityErrorShown=false;
+    }
+  }catch(err){
+    console.error("Fehler bei der Aktivitätserfassung:",err);
+  }
+}
+
+function startActivityTracking(){
+  if(activityInterval){
+    clearInterval(activityInterval);
+    activityInterval=null;
+  }
+
+  updateLastSeen();
+
+  activityInterval=setInterval(()=>{
+    if(document.visibilityState==="visible"){
+      updateLastSeen();
+    }
+  },60000);
+}
+
+/* =====================================================
+   ADMIN-NUTZERSTATISTIK
+   ===================================================== */
+
+async function loadAdminStats(){
+  if(String(currentUser?.email||"").toLowerCase()
+    !==ADMIN_EMAIL.toLowerCase())return;
+
+  const ids=[
+    "adminOnline",
+    "adminToday",
+    "adminWeek",
+    "adminMonth",
+    "adminTotal"
+  ];
+
+  ids.forEach(id=>{
+    if($(id))$(id).textContent="…";
+  });
+
+  try{
+    const {data,error}=await _supabase.rpc(
+      "get_admin_user_activity_stats"
+    );
+
+    if(error)throw error;
+
+    const s=Array.isArray(data)?data[0]:data;
+
+    if(!s)throw new Error("Keine Statistikdaten erhalten.");
+
+    $("adminOnline").textContent=s.online_now??0;
+    $("adminToday").textContent=s.active_today??0;
+    $("adminWeek").textContent=s.active_7_days??0;
+    $("adminMonth").textContent=s.active_30_days??0;
+    $("adminTotal").textContent=s.total_registered??0;
+
+  }catch(err){
+    console.error("Statistikfehler:",err);
+
+    ids.forEach(id=>{
+      if($(id))$(id).textContent="–";
+    });
+
+    notify("Nutzerstatistik konnte nicht geladen werden: "+err.message);
+  }
+}
+
+function esc(value){
+  return String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]);
+}
+
+async function loadRegisteredUsersList(){
+  // Datenschutz: Keine vollstaendige Nutzerliste abrufen.
+  // Freunde und Kursteilnehmer werden direkt per E-Mail eingeladen.
+  allRegisteredUsers=[];
+  const list=$("userAutocompleteList");
+  if(list)list.replaceChildren();
+}
+
+/* AUTHENTIFIZIERUNG & TRAINER-STATUS */
+function switchAuthView(viewName){
+  ["loginView","registerView","forgotView","newPasswordView"].forEach(id=>{
+    $(id).hidden=(id!==viewName);
+  });
+}
+
+async function handleLogin(){
+  const email=$("loginEmail").value.trim();
+  const password=$("loginPassword").value.trim();
+  if(!email||!password)return notify("Bitte E-Mail und Passwort eingeben.");
+  const {data,error}=await _supabase.auth.signInWithPassword({email,password});
+  if(error)return notify("Login fehlgeschlagen: "+error.message);
+  currentUser=data.user;
+  initUserSession();
+  notify("Erfolgreich angemeldet!");
+}
+
+async function handleRegister(){
+  const email=$("regEmail").value.trim();
+  const password=$("regPassword").value.trim();
+  const confirmPw=$("regPasswordConfirm").value.trim();
+  if(!email||!password)return notify("Bitte E-Mail und Passwort ausfüllen.");
+  if(password.length<6)return notify("Mindestens 6 Zeichen.");
+  if(password!==confirmPw)return notify("Passwörter stimmen nicht überein.");
+
+  const {data,error}=await _supabase.auth.signUp({email,password});
+  if(error)return notify("Registrierung fehlgeschlagen: "+error.message);
+  notify("Konto erstellt! Bitte einloggen.");
+  switchAuthView("loginView");
+}
+
+async function handleLogout(){
+  if(activityInterval){
+    clearInterval(activityInterval);
+    activityInterval=null;
+  }
+
+  await _supabase.auth.signOut();
+  currentUser=null;
+  if(friendRefreshTimer){clearInterval(friendRefreshTimer);friendRefreshTimer=null;}
+  confirmedFriendEmails=[];
+  signals=[];
+  selectedSignalIds.clear();
+  $("appMain").hidden=true;
+  $("mainNav").hidden=true;
+  $("menuBtn").hidden=true;
+  $("logoutBtn").style.display="none";
+  $("authPanel").hidden=false;
+  switchAuthView("loginView");
+  notify("Erfolgreich abgemeldet.");
+}
+
+async function checkSession(){
+  const {data}=await _supabase.auth.getSession();
+  if(data.session){
+    currentUser=data.session.user;
+    initUserSession();
+  }
+}
+
+async function initUserSession(){
+  $("authPanel").hidden=true;
+  $("appMain").hidden=false;
+  $("mainNav").hidden=false;
+  $("menuBtn").hidden=false;
+  $("logoutBtn").style.display="block";
+  $("sidebarUserEmail").textContent="Angemeldet als: "+(currentUser?.email||"");
+
+  // Aktivität des angemeldeten Nutzers erfassen
+
+
+  startActivityTracking();
+
+  const admin=String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+  if($("adminStatsPanel"))$("adminStatsPanel").hidden=!admin;
+  if($("adminSupportPanel"))$("adminSupportPanel").hidden=!admin;
+  if($("adminBroadcastPanel"))$("adminBroadcastPanel").hidden=!admin;
+  if($("adminTrainerPanel"))$("adminTrainerPanel").hidden=!admin;
+  if($("adminTrainerOverviewPanel"))$("adminTrainerOverviewPanel").hidden=!admin;
+
+  await loadRegisteredUsersList();
+  await checkTrainerStatus();
+  renderRoleTutorial();
+
+  if(admin){
+    loadAdminStats();
+    loadAdminSupport();
+    loadAdminTrainerRequests();
+    loadAdminTrainerOverview();
+  }
+
+  loadCloudSignals();
+  loadFriends();
+  refreshChatBadge();
+  if(friendRefreshTimer)clearInterval(friendRefreshTimer);
+  friendRefreshTimer=setInterval(()=>{
+    if(currentUser&&document.visibilityState==="visible"){
+      loadFriends();refreshChatBadge();
+      if(!$("friendChat").hidden&&$("chatFriend").value)loadFriendChat();
+    }
+  },30000);
+  loadUserInbox();
+  loadSharedSignals();
+  checkForBroadcasts();
+}
+
+async function checkTrainerStatus(){
+  if(!currentUser)return;
+  const container=$("trainerStatusContainer");
+  const trainerBox=$("trainerActionBox");
+  const admin=String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+
+  try{
+    const {data}=await _supabase.from("user_profiles").select("is_trainer, trainer_requested").eq("id",currentUser.id).maybeSingle();
+    userRole=admin?"admin":data?.is_trainer?"trainer":"user";
+    renderRoleTutorial();
+    if(admin){
+      container.innerHTML=`<span class="ticket-tag" style="background:var(--accent);color:#000;">Administrator</span>`;
+      if(trainerBox)trainerBox.hidden=false;
+      return;
+    }
+    if(data?.is_trainer){
+      container.innerHTML=`<span class="ticket-tag" style="background:var(--green);color:#fff;">✓ Aktivierter Trainer</span>`;
+      if(trainerBox)trainerBox.hidden=false;
+    }else if(data?.trainer_requested){
+      container.innerHTML=`<span class="ticket-tag">⏳ Trainer-Antrag ausstehend</span>`;
+      if(trainerBox)trainerBox.hidden=true;
+    }else{
+      container.innerHTML=`<button type="button" class="link-btn" id="requestTrainerBtn" style="font-size:12px;">Als Trainer bewerben</button>`;
+      if(trainerBox)trainerBox.hidden=true;
+      $("requestTrainerBtn")?.addEventListener("click", requestTrainerRole);
+    }
+  }catch(err){
+    userRole=admin?"admin":"user";
+    renderRoleTutorial();
+  }
+}
+
+async function requestTrainerRole(){
+  try{
+    const {error}=await _supabase.from("user_profiles").update({trainer_requested:true}).eq("id",currentUser.id);
+    if(error)throw error;
+    notify("Trainer-Antrag wurde an den Administrator gesendet!");
+    checkTrainerStatus();
+  }catch(err){
+    notify("Fehler: "+err.message);
+  }
+}
+
+async function loadAdminTrainerRequests(){
+  if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase())return;
+  const container=$("adminTrainerRequestsList");
+  if(!container)return;
+  try{
+    const {data}=await _supabase.from("user_profiles").select("*").eq("trainer_requested",true).eq("is_trainer",false);
+    if(!data||!data.length){
+      container.innerHTML="<p class='muted'>Keine ausstehenden Trainer-Anträge.</p>";
+      return;
+    }
+    container.innerHTML=data.map(u=>`
+      <div class="signal-card">
+        <p><b>${esc(u.email)}</b> möchte Trainer werden.</p>
+        <div class="actions">
+          <button type="button" class="good btn-accept-trainer" data-id="${esc(u.id)}">Bestätigen</button>
+          <button type="button" class="danger btn-deny-trainer" data-id="${esc(u.id)}">Ablehnen</button>
+        </div>
+      </div>`).join("");
+  }catch(err){container.innerHTML="<p class='muted'>Fehler beim Laden.</p>";}
+}
+
+document.addEventListener("click", async e=>{
+  const accept=e.target.closest(".btn-accept-trainer");
+  const deny=e.target.closest(".btn-deny-trainer");
+  if(accept){
+    await _supabase.from("user_profiles").update({is_trainer:true, trainer_requested:false}).eq("id",accept.dataset.id);
+    notify("Trainer bestätigt!");
+    loadAdminTrainerRequests();
+  }
+  if(deny){
+    await _supabase.from("user_profiles").update({trainer_requested:false}).eq("id",deny.dataset.id);
+    notify("Antrag abgelehnt.");
+    loadAdminTrainerRequests();
+  }
+});
+
+
+/* ADMIN: Trainerübersicht, Trainerstatus, Kursverwaltung und getrennte Upload-Sperren */
+let adminTrainerCourseCache=[];
+async function loadAdminTrainerOverview(){
+ if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase())return;
+ const box=$("adminTrainerOverviewList");if(!box)return;
+ box.textContent="Lade Trainer …";
+ try{
+  const [{data:courses,error:courseError},{data:profiles,error:profileError}]=await Promise.all([
+   _supabase.from("courses").select("id,name,trainer_email,created_at").order("name"),
+   _supabase.from("user_profiles").select("id,email,is_trainer").eq("is_trainer",true)
+  ]);
+  if(courseError)throw courseError;if(profileError)throw profileError;
+  const profileRows=profiles||[];
+  const trainerEmails=[...new Set([...profileRows.map(p=>String(p.email||"").trim()),...(courses||[]).map(c=>String(c.trainer_email||"").trim())].filter(Boolean))];
+  adminTrainerCourseCache=trainerEmails.map(email=>({profile:profileRows.find(p=>String(p.email||"").toLowerCase()===email.toLowerCase())||null,email,courses:(courses||[]).filter(c=>String(c.trainer_email).toLowerCase()===email.toLowerCase())}));
+  renderAdminTrainerOverview();
+ }catch(err){box.textContent="Trainerübersicht konnte nicht geladen werden: "+err.message;}
+}
+function renderAdminTrainerOverview(){
+ const box=$("adminTrainerOverviewList");if(!box)return;
+ const q=String($("adminTrainerSearch")?.value||"").trim().toLowerCase();
+ const rows=adminTrainerCourseCache.filter(t=>String(t.email||"").toLowerCase().includes(q)||t.courses.some(c=>String(c.name||"").toLowerCase().includes(q)));
+ box.innerHTML=rows.map(t=>`<details class="signal-card" style="margin:8px 0"><summary style="cursor:pointer"><b>${esc(t.email||"Trainer ohne E-Mail")}</b> <span class="muted">· ${t.courses.length} Kurs(e)</span></summary><div style="padding-top:10px"><p class="muted">Trainerstatus: ${t.profile?"aktiv":"Profilstatus nicht gefunden"}</p>${t.profile?`<button type="button" class="danger admin-revoke-trainer" data-id="${esc(t.profile.id)}" data-email="${esc(t.email)}">Trainerstatus entfernen</button>`:""}${t.courses.map(c=>`<div class="signal-card"><b>${esc(c.name)}</b><p class="muted">${new Date(c.created_at).toLocaleDateString("de-DE")}</p><button type="button" class="primary admin-open-trainer-course" data-id="${esc(c.id)}">Kurs öffnen und verwalten</button></div>`).join("")||"<p class='muted'>Dieser Trainer verwaltet aktuell keine eigenen Kurse.</p>"}</div></details>`).join("")||"<p class='muted'>Keine passenden Trainer gefunden.</p>";
+}
+async function adminRevokeTrainer(profileId,email){
+ if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase())throw new Error("Keine Admin-Berechtigung.");
+ if(!confirm(`Soll der Trainerstatus für ${email} wirklich entfernt werden? Die bestehenden Kurse bleiben erhalten.`))return;
+ const {error}=await _supabase.from("user_profiles").update({is_trainer:false,trainer_requested:false}).eq("id",profileId);
+ if(error)throw error;
+ notify("Trainerstatus wurde entfernt. Bestehende Kurse bleiben erhalten.");
+ await loadAdminTrainerOverview();
+}
+async function adminLoadCourseManagement(courseId){
+ const {data,error}=await _supabase.from("course_upload_controls").select("*").eq("course_id",courseId).maybeSingle();
+ if(error)throw error;
+ $("adminEnablePresentations").checked=!!data?.presentations_enabled;
+ $("adminLockPresentations").checked=!!data?.presentations_locked;
+ $("adminLockFiles").checked=!!data?.files_locked;
+ await adminRenderCourseItems(courseId);
+}
+async function adminRenderCourseItems(courseId){
+ const box=$("adminCourseManageList");if(!box)return;
+ const [{data:p,error:pe},{data:m,error:me}]=await Promise.all([
+  _supabase.from("course_presentations").select("id,title,created_at,size_bytes").eq("course_id",courseId).order("created_at",{ascending:false}),
+  _supabase.from("course_materials").select("id,title,is_homework,created_at").eq("course_id",courseId).order("created_at",{ascending:false})
+ ]);
+ if(pe)throw pe;if(me)throw me;
+ box.innerHTML=`<h4>Präsentationen und Dateien dieses Kurses</h4>`+
+  (p||[]).map(x=>`<div class="signal-card"><b>🖥️ ${esc(x.title)}</b><div class="actions"><button type="button" class="danger admin-delete-presentation" data-id="${esc(x.id)}">Präsentation löschen</button></div></div>`).join("")+
+  (m||[]).map(x=>`<div class="signal-card"><b>📄 ${esc(x.title)}</b><small> ${x.is_homework?"Hausaufgabe":"Kursdatei"}</small><div class="actions"><button type="button" class="danger admin-delete-course-material" data-id="${esc(x.id)}">Material löschen</button></div></div>`).join("")+
+  (!(p||[]).length&&!(m||[]).length?"<p class='muted'>Noch keine Dateien oder Präsentationen vorhanden.</p>":"");
+}
+document.addEventListener("input",e=>{if(e.target?.id==="adminTrainerSearch")renderAdminTrainerOverview();});
+document.addEventListener("click",async e=>{
+ const open=e.target.closest(".admin-open-trainer-course");
+ const revoke=e.target.closest(".admin-revoke-trainer");
+ const delP=e.target.closest(".admin-delete-presentation");
+ const delM=e.target.closest(".admin-delete-course-material");
+ if(open){activeCourseId=open.dataset.id;await openCourse(activeCourseId);return;}
+ try{
+  if(revoke){await adminRevokeTrainer(revoke.dataset.id,revoke.dataset.email);return;}
+  if(delP){
+   if(!confirm("Diese Präsentation für alle Kursteilnehmer löschen?"))return;
+   const {data:r,error}=await _supabase.from("course_presentations").select("storage_path").eq("id",delP.dataset.id).single();if(error)throw error;
+   const {error:de}=await _supabase.from("course_presentations").delete().eq("id",delP.dataset.id);if(de)throw de;
+   const {error:se}=await _supabase.storage.from(GC_PRESENTATION_BUCKET).remove([r.storage_path]);if(se)throw se;
+   await adminRenderCourseItems(activeCourseId);await gcLoadPresentations(activeCourseId,true);notify("Präsentation gelöscht.");
+  }
+  if(delM){
+   if(!confirm("Dieses Kursmaterial samt Datei löschen?"))return;
+   const {data:r,error}=await _supabase.from("course_materials").select("storage_path").eq("id",delM.dataset.id).single();if(error)throw error;
+   const {error:de}=await _supabase.from("course_materials").delete().eq("id",delM.dataset.id);if(de)throw de;
+   if(r?.storage_path){const {error:se}=await _supabase.storage.from(BA_BUCKET).remove([r.storage_path]);if(se)throw se;}
+   await adminRenderCourseItems(activeCourseId);await loadCourseMaterials(activeCourseId,true);notify("Kursmaterial gelöscht.");
+  }
+ }catch(err){notify("Admin-Verwaltung: "+err.message);}
+});
+$("adminSaveCourseLocks")?.addEventListener("click",async()=>{
+ if(String(currentUser?.email||"").toLowerCase()!==ADMIN_EMAIL.toLowerCase()||!activeCourseId)return;
+ const {error}=await _supabase.from("course_upload_controls").upsert({
+  course_id:activeCourseId,
+  presentations_enabled:$("adminEnablePresentations").checked,
+  presentations_locked:$("adminLockPresentations").checked,
+  files_locked:$("adminLockFiles").checked,
+  updated_at:new Date().toISOString(),
+  updated_by:currentUser.id
+ },{onConflict:"course_id"});
+ if(error){notify("Sperren konnten nicht gespeichert werden: "+error.message);return;}
+ notify("Upload-Sperren gespeichert.");
+});
+
+/* POP-UPS & BROADCASTS */
+async function checkForBroadcasts(){
+  if(!currentUser)return;
+  try{
+    const {data: broadcasts}=await _supabase.from("broadcast_messages").select("*").order("created_at",{ascending:false});
+    if(!broadcasts||!broadcasts.length)return;
+    const {data: reads}=await _supabase.from("broadcast_reads").select("broadcast_id").eq("user_id",currentUser.id);
+    const readIds=new Set((reads||[]).map(r=>r.broadcast_id));
+    const unread=broadcasts.find(b=>{
+      if(readIds.has(b.id))return false;
+      if(b.target_type==="all")return true;
+      if(b.target_type==="specific"&&Array.isArray(b.target_emails)){
+        return b.target_emails.map(e=>e.toLowerCase().trim()).includes(currentUser.email.toLowerCase().trim());
+      }
+      return false;
+    });
+    if(unread){
+      window.currentPopupId=unread.id;
+
+      $("popupTitle").textContent=unread.title;
+      $("popupMessage").textContent=unread.message;
+      $("popupBackdrop").hidden=false;
+      $("broadcastPopup").hidden=false;
+    }
+  }catch(err){}
+}
+
+async function markBroadcastAsRead(){
+  if(!currentUser||!window.currentPopupId)return;
+  try{
+    await _supabase.from("broadcast_reads").insert([{broadcast_id:window.currentPopupId, user_id:currentUser.id}]);
+  }catch(err){}
+  $("popupBackdrop").hidden=true;
+  $("broadcastPopup").hidden=true;
+  window.currentPopupId=null;
+}
+
+/* FREUNDE */
+async function sendFriendRequest(){
+  const recipient=$("friendEmail").value.trim().toLowerCase();
+  if(!recipient)return notify("Bitte E-Mail eingeben.");
+  if(recipient===currentUser.email.toLowerCase())return notify("Du kannst dich nicht selbst hinzufügen.");
+
+  try{
+    const {error}=await _supabase.from("friendships").insert([{
+      sender_email:currentUser.email.toLowerCase(),
+      recipient_email:recipient,
+      status:"pending"
+    }]);
+    if(error)throw error;
+    $("friendEmail").value="";
+    notify("Freundschaftsanfrage gesendet!");
+    loadFriends();
+  }catch(err){
+    notify("Fehler: "+err.message);
+  }
+}
+
+async function loadFriends(){
+  if(!currentUser)return;
+  const container=$("friendRequestsList");
+  try{
+    const email=currentUser.email.toLowerCase();
+    const {data,error}=await _supabase.from("friendships").select("*")
+      .or(`sender_email.eq.${email},recipient_email.eq.${email}`);
+    if(error)throw error;
+    const rows=data||[];
+    confirmedFriendEmails=[...new Set(rows.filter(f=>f.status==="accepted")
+      .map(f=>f.sender_email.toLowerCase()===email?f.recipient_email:f.sender_email)
+      .map(v=>String(v).toLowerCase()))].sort();
+    const incoming=rows.filter(f=>f.status==="pending"&&f.recipient_email.toLowerCase()===email);
+    $("friendRequestBadge").hidden=!incoming.length;
+    $("friendRequestBadge").textContent=incoming.length;
+    container.innerHTML=rows.length?rows.map(f=>{
+      const isSender=f.sender_email.toLowerCase()===email;
+      if(f.status==="pending"&&!isSender)
+        return `<div class="signal-card"><p>Neue Anfrage von <b>${esc(f.sender_email)}</b></p><button type="button" class="good btn-accept-friend" data-id="${esc(f.id)}">Annehmen</button></div>`;
+      const other=isSender?f.recipient_email:f.sender_email;
+      return `<div class="signal-card"><p>${esc(other)} (${f.status==="accepted"?"Befreundet":"Ausstehend"})</p>${f.status==="accepted"?`<button type="button" class="btn-chat-friend" data-email="${esc(other)}">💬 Nachricht schreiben</button>`:""}</div>`;
+    }).join(""):'<p class="muted">Noch keine Freunde oder Anfragen.</p>';
+    const suggestions=$("friendEmailSuggestions");
+    suggestions.replaceChildren(...confirmedFriendEmails.map(mail=>{const opt=document.createElement("option");opt.value=mail;return opt;}));
+    const select=$("chatFriend"),previous=select.value;
+    select.innerHTML='<option value="">Freund auswählen</option>'+confirmedFriendEmails.map(mail=>`<option value="${esc(mail)}">${esc(mail)}</option>`).join("");
+    if(confirmedFriendEmails.includes(previous))select.value=previous;
+    updateFriendNotificationDot();
+  }catch(err){if(container)container.innerHTML='<p class="muted">Freunde konnten nicht geladen werden: '+esc(err.message)+'</p>';}
+}
+
+function updateFriendNotificationDot(){
+  const visible=["friendRequestBadge","friendChatBadge","inboxUnreadBadge","sharedBadge"].some(id=>!$(id).hidden);
+  $("menuBadgeDot").hidden=!visible;
+}
+
+document.addEventListener("click",async e=>{
+  const btn=e.target.closest(".btn-accept-friend");
+  if(btn){
+    const {error}=await _supabase.from("friendships").update({status:"accepted"}).eq("id",btn.dataset.id);
+    if(error)return notify("Annahme fehlgeschlagen: "+error.message);
+    notify("Freundschaft angenommen!");await loadFriends();
+  }
+  const chat=e.target.closest(".btn-chat-friend");
+  if(chat){showPage("friendChat");$("chatFriend").value=chat.dataset.email;await loadFriendChat();}
+});
+
+async function refreshChatBadge(){
+  if(!currentUser||!chatTableAvailable)return;
+  const {count,error}=await _supabase.from("friend_messages")
+    .select("id",{count:"exact",head:true})
+    .eq("recipient_email",currentUser.email.toLowerCase()).is("read_at",null);
+  if(error){
+    if(error.code==="42P01"||error.code==="PGRST205")chatTableAvailable=false;
+    return;
+  }
+  $("friendChatBadge").hidden=!(count>0);
+  $("friendChatBadge").textContent=count||0;
+  updateFriendNotificationDot();
+  await loadUnreadFriendSenders();
+}
+async function loadUnreadFriendSenders(){
+  const box=$("chatUnreadSenders");
+  if(!box||!currentUser)return;
+  const {data,error}=await _supabase.from("friend_messages")
+    .select("sender_email,created_at").eq("recipient_email",currentUser.email.toLowerCase())
+    .is("read_at",null).order("created_at",{ascending:false}).limit(500);
+  if(error){box.textContent="Ungelesene Nachrichten konnten nicht geladen werden.";return;}
+  const counts=new Map();
+  for(const m of data||[]){const email=String(m.sender_email).toLowerCase();counts.set(email,(counts.get(email)||0)+1);}
+  box.innerHTML=counts.size?[...counts].map(([email,count])=>
+    `<button type="button" class="btn-unread-friend" data-email="${esc(email)}" style="width:100%;justify-content:space-between;margin-bottom:7px">💬 ${esc(email)} <span class="pill-count" style="position:static">${count} neu</span></button>`).join(""):
+    '<p class="muted">Keine ungelesenen Nachrichten.</p>';
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest(".btn-unread-friend");if(!b)return;
+ await loadFriends();
+ if(!confirmedFriendEmails.includes(b.dataset.email))return notify("Nur bestätigte Freunde können geöffnet werden.");
+ $("chatFriend").value=b.dataset.email;await loadFriendChat();
+});
+async function loadFriendChat(){
+  if(!currentUser)return;
+  const other=$("chatFriend").value;
+  const container=$("chatHistory");
+  if(!other){container.innerHTML='<p class="muted">Bitte einen Freund auswählen.</p>';return;}
+  if(!confirmedFriendEmails.includes(other))return notify("Bitte einen bestätigten Freund auswählen.");
+  const self=currentUser.email.toLowerCase();
+  const {data,error}=await _supabase.from("friend_messages").select("*")
+    .or(`and(sender_email.eq.${self},recipient_email.eq.${other}),and(sender_email.eq.${other},recipient_email.eq.${self})`)
+    .order("created_at",{ascending:true}).limit(200);
+  if(error){container.textContent="Nachrichten konnten nicht geladen werden: "+error.message+". Bitte zuerst das TEST-SQL installieren.";return;}
+  container.innerHTML=(data||[]).map(m=>{
+    const mine=m.sender_email.toLowerCase()===self;
+    return `<div class="signal-card" style="margin:6px 0;${mine?'border-color:#26795b;':''}"><small>${mine?'Du':esc(m.sender_email)} · ${new Date(m.created_at).toLocaleString('de-DE')}</small><p style="white-space:pre-wrap;overflow-wrap:anywhere">${esc(m.message)}</p></div>`;
+  }).join("")||'<p class="muted">Noch keine Nachrichten. Schreib die erste!</p>';
+  container.scrollTop=container.scrollHeight;
+  const unread=(data||[]).filter(m=>m.recipient_email.toLowerCase()===self&&!m.read_at).map(m=>m.id);
+  if(unread.length){
+    const {error:readError}=await _supabase.from("friend_messages").update({read_at:new Date().toISOString()}).in("id",unread).eq("recipient_email",self);
+    if(readError)console.warn("Lesestatus:",readError);
+  }
+  await refreshChatBadge();
+}
+async function sendFriendChat(){
+  const other=$("chatFriend").value,text=$("chatText").value.trim();
+  if(!confirmedFriendEmails.includes(other))return notify("Bitte einen bestätigten Freund auswählen.");
+  if(!text)return notify("Bitte Nachricht eingeben.");
+  const button=$("sendChat");button.disabled=true;
+  try{
+    const {error}=await _supabase.from("friend_messages").insert({sender_email:currentUser.email.toLowerCase(),recipient_email:other,message:text});
+    if(error)throw error;
+    $("chatText").value="";await loadFriendChat();
+  }catch(err){notify("Nachricht konnte nicht gesendet werden: "+err.message);}
+  finally{button.disabled=false;}
+}
+
+/* LERNGRUPPEN */
+async function createStudyGroup(){
+  if(!currentUser)return notify("Bitte zuerst anmelden.");
+  const name=$("newGroupName").value.trim();
+  if(!name)return notify("Bitte Gruppenname eingeben.");
+  const button=$("createGroupSubmit");button.disabled=true;
+  let stage="Anmeldung prüfen",groupId=null,groupCreated=false;
+  try{
+    const {data:authData,error:authError}=await _supabase.auth.getUser();
+    if(authError)throw authError;
+    const verifiedEmail=String(authData?.user?.email||"").trim().toLowerCase();
+    if(!verifiedEmail||!authData?.user?.id)throw Error("Keine gültige Sitzung. Bitte neu anmelden.");
+    // Die ID vorab erzeugen: Lesen ist unter Umständen erst nach dem
+    // Eintragen der Mitgliedschaft durch die RLS-Regeln erlaubt.
+    groupId=crypto.randomUUID();
+    stage="Lerngruppe in study_groups erstellen";
+    const {error}=await _supabase.from("study_groups")
+      .insert([{id:groupId,name,creator_email:verifiedEmail}]);
+    if(error)throw error;
+    groupCreated=true;
+    stage="Ersteller als Gruppenmitglied eintragen";
+    const memberResult=await _supabase.from("study_group_members").insert([{
+      group_id:groupId,user_email:verifiedEmail,
+      role:"owner",can_add:true,can_edit:true,can_delete:true
+    }]);
+    if(memberResult.error)throw memberResult.error;
+    $("newGroupName").value="";$("createGroupForm").hidden=true;
+    await loadStudyGroups();notify("Lerngruppe erfolgreich erstellt!");
+  }catch(err){
+    console.error("Lerngruppe erstellen:",stage,err);
+    if(groupCreated){const cleanup=await _supabase.from("study_groups").delete().eq("id",groupId);
+      if(cleanup.error)console.warn("Unvollständige Gruppe konnte nicht gelöscht werden",cleanup.error);}
+    alert("Lerngruppe fehlgeschlagen\nSchritt: "+stage+"\nFehlercode: "+(err.code||"unbekannt")+"\nMeldung: "+(err.message||err));
+  }finally{button.disabled=false;}
+}
+
+async function loadStudyGroups(){
+  const container=$("myStudyGroupsList");
+  if(!container)return;
+  try{
+    const {data: memberships,error:memberError}=await _supabase.from("study_group_members").select("group_id").eq("user_email",currentUser.email.toLowerCase());
+    if(memberError)throw memberError;
+    if(!memberships||!memberships.length){
+    container.innerHTML="<p class='muted'>Du bist in keiner Lerngruppe.</p>";return;}
+    const groupIds=memberships.map(m=>m.group_id);
+    const {data: groups,error:groupsError}=await _supabase.from("study_groups").select("*").in("id",groupIds);
+    if(groupsError)throw groupsError;
+    container.innerHTML=(groups||[]).map(g=>`
+      <div class="signal-card">
+        <h3>${esc(g.name)}</h3>
+        <small class="muted">Erstellt von: ${esc(g.creator_email)}</small>
+        <button type="button" class="primary btn-open-group" data-id="${esc(g.id)}" style="width:100%;margin-top:10px;">Öffnen</button>
+      </div>`).join("");
+  }catch(err){container.innerHTML="<p class='muted'>Fehler beim Laden.</p>";}
+}
+
+document.addEventListener("click", e=>{
+  const btn=e.target.closest(".btn-open-group");
+  if(btn){
+    activeGroupId=btn.dataset.id;
+    openStudyGroup(activeGroupId);
+  }
+});
+
+let groupContext=null;
+let groupSignalRows=[];
+function groupError(err){
+  console.error("Lerngruppe:",err);
+  alert("Lerngruppe: "+(err.message||err)+(err.code?"\nFehlercode: "+err.code:""));
+}
+async function openStudyGroup(groupId){
+  activeGroupId=groupId;groupContext=null;
+  showPage("groupDetail");
+  $("groupDetailTitle").textContent="Lerngruppe wird geladen …";
+  $("groupDetailCreator").textContent="";
+  ["groupInviteBtn","groupManageMembersBtn","groupLearnBtn","groupAddSignalBtn"].forEach(id=>$(id).disabled=true);
+  $("groupAddSignalBtn").hidden=true;
+  try{
+    const {data:group,error}=await _supabase.from("study_groups").select("*").eq("id",groupId).single();
+    if(error)throw error;
+    const {data:members,error:memberError}=await _supabase.from("study_group_members").select("*").eq("group_id",groupId);
+    if(memberError)throw memberError;
+    if(activeGroupId!==groupId)return;
+    const email=currentUser.email.toLowerCase();
+    const member=(members||[]).find(m=>String(m.user_email).toLowerCase()===email);
+    const owner=String(group.creator_email).toLowerCase()===email;
+    groupContext={id:groupId,group,members:members||[],member,owner};
+    $("groupDetailTitle").textContent=group.name;
+    $("groupDetailCreator").textContent="Erstellt von: "+group.creator_email;
+    $("groupInviteBtn").disabled=!owner;
+    $("groupManageMembersBtn").disabled=false;
+    $("groupLearnBtn").disabled=false;
+    $("groupAddSignalBtn").hidden=!(owner||member?.can_add);
+    $("groupAddSignalBtn").disabled=!(owner||member?.can_add);
+    await loadGroupSignals(groupId);
+  }catch(err){$("groupDetailTitle").textContent="Gruppe konnte nicht geladen werden";groupError(err);}
+}
+async function fetchGroupSignals(groupId){
+  const {data,error}=await _supabase.from("study_group_signals").select("*").eq("group_id",groupId);
+  if(error)throw error;
+  return data||[];
+}
+async function loadGroupSignals(groupId){
+  const container=$("groupSignalsList");
+  try{
+    const data=await fetchGroupSignals(groupId);
+    if(activeGroupId!==groupId)return;
+    groupSignalRows=data;
+    $("groupSignalCount").textContent=data.length;
+    container.innerHTML=data.map(s=>`<div class="signal-card"><h3>${esc(s.short)} – ${esc(s.long)}</h3><p style="white-space:pre-wrap">${esc(s.meaning)}</p><div class="actions">${groupContext?.owner||groupContext?.member?.can_edit?`<button type="button" data-group-edit="${esc(s.id)}">Bearbeiten</button>`:''}${groupContext?.owner||groupContext?.member?.can_delete?`<button type="button" class="danger" data-group-delete="${esc(s.id)}">Löschen</button>`:''}</div></div>`).join("")||"<p class='muted'>Keine Signale in der Gruppe.</p>";
+  }catch(err){container.textContent="Signale konnten nicht geladen werden: "+err.message;throw err;}
+}
+function groupDialog(title,fields,submit){
+  const old=$("groupModal");if(old)old.remove();
+  const outer=document.createElement("div");outer.id="groupModal";
+  outer.style="position:fixed;inset:0;z-index:5000;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px";
+  outer.innerHTML=`<div class="panel" role="dialog" aria-modal="true" aria-labelledby="groupModalTitle" style="width:100%;max-width:640px;max-height:90vh;overflow:auto"><h2 id="groupModalTitle">${esc(title)}</h2><form id="groupModalForm">${fields}<div class="actions">${submit?'<button class="primary" type="submit">Speichern</button>':''}<button type="button" id="groupModalClose">Schließen</button></div></form></div>`;
+  document.body.appendChild(outer);
+  const close=()=>{document.removeEventListener("keydown",onKey);outer.remove();};
+  const onKey=e=>{if(e.key==="Escape")close();};
+  document.addEventListener("keydown",onKey);$("groupModalClose").onclick=close;
+  $("groupModalForm").onsubmit=async e=>{
+    e.preventDefault();if(!submit)return;
+    const button=e.submitter;button.disabled=true;
+    try{await submit(new FormData(e.currentTarget));close();notify("Gespeichert.");}
+    catch(err){groupError(err);}finally{button.disabled=false;}
+  };
+  $("groupModalClose").focus();
+}
+async function inviteGroupMember(){
+  const ctx=groupContext;if(!ctx?.owner)return notify("Nur der Ersteller kann Mitglieder hinzufügen.");
+  groupDialog("Mitglied einladen",'<p>Die Person erhält direkt Gruppenzugang über ihre registrierte E-Mail-Adresse. Es wird keine E-Mail versendet.</p>'+baField("email","E-Mail-Adresse","email"),async form=>{
+    const email=String(form.get("email")||"").trim().toLowerCase();
+    if(!email)throw Error("Bitte E-Mail-Adresse eingeben.");
+    if(ctx.members.some(m=>String(m.user_email).toLowerCase()===email))throw Error("Diese Person ist bereits Mitglied.");
+    const {error}=await _supabase.from("study_group_members").insert([{group_id:ctx.id,user_email:email,role:"member",can_add:false,can_edit:false,can_delete:false}]);
+    if(error)throw error;
+    await openStudyGroup(ctx.id);
+  });
+}
+function manageGroupMembers(){
+  const ctx=groupContext;if(!ctx)return;
+  const editable=ctx.members.filter(m=>String(m.user_email).toLowerCase()!==String(ctx.group.creator_email).toLowerCase()&&m.role!=="owner");
+  const fields=ctx.members.map(m=>{
+    const i=editable.indexOf(m),locked=!ctx.owner||i<0;
+    return `<div class="signal-card"><h3>${esc(m.user_email)}</h3><p>${i<0?'Ersteller / Eigentümer':'Mitglied'}</p>${["add","edit","delete"].map((key,k)=>`<label><input type="checkbox" name="${i}_${key}" ${m['can_'+key]?'checked':''} ${locked?'disabled':''}> ${['Signale hinzufügen','Signale bearbeiten','Signale löschen'][k]}</label>`).join('')}</div>`;
+  }).join('');
+  groupDialog("Mitglieder & Rechte",fields,ctx.owner?async form=>{
+    for(let i=0;i<editable.length;i++){
+      const m=editable[i],permissions={can_add:form.has(i+"_add"),can_edit:form.has(i+"_edit"),can_delete:form.has(i+"_delete")};
+      if(Object.keys(permissions).every(key=>Boolean(m[key])===permissions[key]))continue;
+      const {error}=await _supabase.from("study_group_members").update(permissions).eq("group_id",ctx.id).eq("user_email",m.user_email);
+      if(error)throw error;
+    }
+    await openStudyGroup(ctx.id);
+  }:null);
+}
+function addGroupSignals(){
+  const ctx=groupContext;if(!ctx||!(ctx.owner||ctx.member?.can_add))return notify("Keine Berechtigung zum Hinzufügen.");
+  const available=signals.slice();
+  if(!available.length)return notify("Lege zuerst unter Signalverwaltung eigene Signale an.");
+  groupDialog("Signale zur Gruppe hinzufügen",'<p>Wähle eigene Signale aus. Dein Original bleibt in deiner Sammlung erhalten; die Angaben werden der Lerngruppe hinzugefügt.</p><div class="group-signal-picker">'+available.map((sig,i)=>`<label><input type="checkbox" name="signal" value="${i}"> <span>${esc(sig.short)} – ${esc(sig.long)}</span></label>`).join('')+'</div>',async form=>{
+    const selected=form.getAll("signal").map(i=>available[Number(i)]).filter(Boolean);
+    if(!selected.length)throw Error("Bitte mindestens ein Signal auswählen.");
+    const existing=await fetchGroupSignals(ctx.id);
+    const same=(a,b)=>a.short===b.short&&a.long===b.long&&a.meaning===b.meaning;
+    const rows=[];
+    for(const sig of selected)if(!existing.some(e=>same(e,sig))&&!rows.some(e=>same(e,sig)))rows.push({group_id:ctx.id,short:sig.short,long:sig.long,meaning:sig.meaning});
+    if(!rows.length)throw Error("Diese Signale sind bereits in der Gruppe.");
+    const {error}=await _supabase.from("study_group_signals").insert(rows);if(error)throw error;
+    await loadGroupSignals(ctx.id);
+  });
+}
+async function learnGroup(){
+  const ctx=groupContext;if(!ctx)return;
+  const data=await fetchGroupSignals(ctx.id);
+  if(!data.length)return notify("Füge zuerst Signale zur Gruppe hinzu.");
+  let index=0;
+  groupDialog("Gruppe lernen",'<p id="groupLearnProgress"></p><h3 id="groupLearnShort"></h3><p>Wie lauten Langname und Bedeutung?</p><div id="groupLearnAnswer" hidden style="white-space:pre-wrap"></div><div class="actions"><button type="button" id="groupReveal">Antwort anzeigen</button><button type="button" id="groupNext">Nächstes Signal</button></div>',null);
+  const render=()=>{
+    const s=data[index];$("groupLearnProgress").textContent=(index+1)+" / "+data.length;
+    $("groupLearnShort").textContent=s.short;$("groupLearnAnswer").textContent=s.long+"\n\n"+s.meaning;$("groupLearnAnswer").hidden=true;
+  };
+  $("groupReveal").onclick=()=>$("groupLearnAnswer").hidden=false;
+  $("groupNext").onclick=()=>{index=(index+1)%data.length;render();};render();
+}
+async function changeGroupSignal(button){
+  const ctx=groupContext;if(!ctx)return;
+  const deleting=button.hasAttribute("data-group-delete");
+  if(!(ctx.owner||ctx.member?.[deleting?"can_delete":"can_edit"]))throw Error("Keine Berechtigung.");
+  const id=button.getAttribute(deleting?"data-group-delete":"data-group-edit");
+  const row=groupSignalRows.find(s=>String(s.id)===id);if(!row)throw Error("Signal nicht gefunden. Bitte Gruppe neu öffnen.");
+  groupDialog(deleting?"Signal aus Gruppe löschen":"Gruppensignal bearbeiten",deleting?`<p>„${esc(row.short)}“ aus dieser Gruppe löschen? Dein eigenes Signal bleibt erhalten.</p>`:`<label>Kurzname<input name="short" value="${esc(row.short)}" required></label><label>Langname<input name="long" value="${esc(row.long)}" required></label><label>Bedeutung<textarea name="meaning" required>${esc(row.meaning)}</textarea></label>`,async form=>{
+    let query;
+    if(deleting)query=_supabase.from("study_group_signals").delete();
+    else{
+      const payload=Object.fromEntries(["short","long","meaning"].map(k=>[k,String(form.get(k)||"").trim()]));
+      if(Object.values(payload).some(v=>!v))throw Error("Bitte alle Textfelder ausfüllen.");
+      query=_supabase.from("study_group_signals").update(payload);
+    }
+    const {error}=await query.eq("group_id",ctx.id).eq("id",row.id);if(error)throw error;
+    await loadGroupSignals(ctx.id);
+  });
+}
+document.addEventListener("click",async e=>{
+  const button=e.target.closest("button");if(!button||button.disabled)return;
+  const action=button.matches("[data-group-edit],[data-group-delete]")?()=>changeGroupSignal(button):{groupInviteBtn:inviteGroupMember,groupManageMembersBtn:manageGroupMembers,groupLearnBtn:learnGroup,groupAddSignalBtn:addGroupSignals}[button.id];
+  if(!action)return;
+  button.disabled=true;
+  try{await action();}catch(err){groupError(err);}finally{button.disabled=false;}
+});
+
+/* KURSE */
+async function createCourse(){
+  const name=$("courseNameInput").value.trim();
+  if(!name)return notify("Bitte Kursnamen eingeben.");
+  try{
+    const {error}=await _supabase.from("courses").insert([{name, trainer_email:currentUser.email.toLowerCase()}]);
+    if(error)throw error;
+    $("courseNameInput").value="";
+    $("createCourseForm").hidden=true;
+    notify("Kurs erstellt!");
+    loadCourses();
+  }catch(err){notify("Fehler: "+err.message);}
+}
+
+async function loadCourses(){
+  const container=$("myCoursesList");
+  try{
+    const {data,error}=await _supabase.from("courses").select("*").order("created_at",{ascending:false});
+    if(error)throw error;
+    container.innerHTML=(data||[]).map(c=>`<div class="signal-card"><h3>${esc(c.name)}</h3><small>Trainer: ${esc(c.trainer_email)}</small><button type="button" class="primary btn-open-course" data-id="${esc(c.id)}" style="width:100%;margin-top:10px">Kurs öffnen</button></div>`).join("")||"<p class='muted'>Keine Kurse vorhanden.</p>";
+  }catch(err){container.textContent="Kurse konnten nicht geladen werden: "+err.message;}
+}
+
+document.addEventListener("click", e=>{
+  const btn=e.target.closest(".btn-open-course");
+  if(btn){
+    activeCourseId=btn.dataset.id;
+    openCourse(activeCourseId);
+  }
+});
+
+async function openCourse(courseId){
+  showPage("courseDetail");
+  try{
+    const {data: course}=await _supabase.from("courses").select("*").eq("id",courseId).single();
+    $("courseDetailTitle").textContent=course.name;
+    $("courseDetailTrainer").textContent="Trainer: "+course.trainer_email;
+    const isOwner=course.trainer_email.toLowerCase()===currentUser.email.toLowerCase() || currentUser.email.toLowerCase()===ADMIN_EMAIL.toLowerCase();
+    const {data:coTrainers,error:coError}=await _supabase.from("course_co_trainers").select("trainer_email").eq("course_id",courseId);
+    if(coError)console.warn("Co-Trainer konnten nicht gelesen werden:",coError);
+    const isTrainer=isOwner||(coTrainers||[]).some(t=>String(t.trainer_email).toLowerCase()===currentUser.email.toLowerCase());
+    window.baCourseOwner=isOwner;
+    $("courseAddCoTrainerBtn").hidden=!isOwner;
+    $("trainerCourseControls").hidden=!isTrainer;
+    const isAdmin=String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+    $("adminCourseManagement").hidden=!isAdmin;
+    if(isAdmin) await adminLoadCourseManagement(courseId);
+    const {data:uploadLocks}=await _supabase.from("course_upload_controls").select("presentations_locked,files_locked").eq("course_id",courseId).maybeSingle();
+    const filesLocked=!!uploadLocks?.files_locked;
+    const materialUploadButton=$("courseAddMaterialBtn");
+    if(materialUploadButton)materialUploadButton.hidden=filesLocked;
+    await loadCourseMaterials(courseId, isTrainer);
+    await gcLoadPresentations(courseId,isTrainer);
+    await baCourseExtras(courseId, isTrainer);
+  }catch(err){
+    notify("Kurs konnte nicht geöffnet werden: "+err.message);
+    console.error("Kurs öffnen fehlgeschlagen:",err);
+  }
+}
+
+async function loadCourseMaterials(courseId,isTrainer){
+  const mc=$("courseMaterialsList"), hc=$("courseHomeworkList");
+  try{
+    const {data,error}=await _supabase.from("course_materials").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+    if(error)throw error;
+    const card=m=>`<div class="signal-card"><h3>${esc(m.title)}</h3><p>${esc(m.description||"")}</p>${m.due_date?`<small>Frist: ${new Date(m.due_date).toLocaleString("de-DE")}</small>`:""}<div class="actions">${m.storage_path||m.file_data?`<button class="btn-course-file" data-id="${esc(m.id)}">📎 Datei öffnen</button>`:""}${m.is_homework&&!isTrainer?`<button class="primary btn-submit-hw" data-id="${esc(m.id)}">Hausaufgabe abgeben</button>`:""}${m.is_homework&&isTrainer?`<button class="btn-review-hw" data-id="${esc(m.id)}">Abgaben ansehen</button>`:""}${isTrainer?`<button class="danger btn-delete-material" data-id="${esc(m.id)}">Entfernen</button>`:""}</div></div>`;
+    mc.innerHTML=(data||[]).filter(m=>!m.is_homework).map(card).join("")||"<p class='muted'>Keine Materialien.</p>";
+    hc.innerHTML=(data||[]).filter(m=>m.is_homework).map(card).join("")||"<p class='muted'>Keine Hausaufgaben.</p>";
+    window.baMaterials=new Map((data||[]).map(m=>[m.id,m]));
+  }catch(err){mc.textContent=hc.textContent="Fehler: "+err.message;}
+}
+
+/* KURSERWEITERUNG: Kursmitglieder, Dateien, Hausaufgaben, Signale, Popups und Einzelchat */
+const BA_BUCKET="byarmando-course-files";
+let baCourse=null;
+function baDialog(title,fields,submit){
+ const old=$("baModal");if(old)old.remove();
+ const outer=document.createElement("div");outer.id="baModal";outer.style="position:fixed;inset:0;z-index:5000;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px";
+ outer.innerHTML=`<div class="panel" style="width:100%;max-width:540px;max-height:90vh;overflow:auto"><h2>${esc(title)}</h2><form id="baModalForm">${fields}<div class="actions"><button class="primary" type="submit">Speichern</button><button type="button" id="baCancel">Abbrechen</button></div></form></div>`;
+ document.body.appendChild(outer);$("baCancel").onclick=()=>outer.remove();
+ $("baModalForm").onsubmit=async e=>{e.preventDefault();const b=e.submitter;b.disabled=true;try{await submit(new FormData(e.currentTarget));outer.remove();notify("Gespeichert.");if(activeCourseId)openCourse(activeCourseId);}catch(err){alert("Fehler: "+err.message);}finally{b.disabled=false;}};
+}
+const baField=(name,label,type="text",required=true)=>`<label>${esc(label)}<input name="${name}" type="${type}" ${required?"required":""}></label>`;
+async function baUpload(file,courseId,section,materialId){
+ if(!file)return null;
+ if(file.size>15*1024*1024)throw Error("Datei ist größer als 15 MB.");
+ const clean=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+ const path=section==="materials"?`${courseId}/materials/${crypto.randomUUID()}_${clean}`:`${courseId}/submissions/${currentUser.id}/${materialId}/${crypto.randomUUID()}_${clean}`;
+ const {error}=await _supabase.storage.from(BA_BUCKET).upload(path,file,{upsert:false});if(error)throw error;
+ return {storage_path:path,original_filename:file.name,content_type:file.type||"application/octet-stream"};
+}
+async function baOpenFile(row){
+ if(row.storage_path){const {data,error}=await _supabase.storage.from(BA_BUCKET).createSignedUrl(row.storage_path,90);if(error)throw error;window.open(data.signedUrl,"_blank","noopener");}
+ else if(row.file_data){if(/^data:|^https?:/i.test(row.file_data))window.open(row.file_data,"_blank","noopener");else alert("Altes Dateiformat kann hier nicht geöffnet werden.");}
+}
+async function baLoadMembers(){
+ const {data,error}=await _supabase.from("course_members").select("*").eq("course_id",activeCourseId);if(error)throw error;
+ const box=$("baMembers");if(!box)return;
+ box.innerHTML=(data||[]).map(m=>`<div class="signal-card">${esc(m.user_email)} ${baCourse?.trainer?`<button class="danger btn-remove-member" data-id="${esc(m.id)}">Entfernen</button><button class="btn-open-chat" data-email="${esc(m.user_email)}">💬 Chat</button>`:""}</div>`).join("")||"<p class='muted'>Keine Schüler eingetragen.</p>";
+}
+async function baUploadCourseImage(file,courseId){
+ if(file.size>10*1024*1024)throw Error("Bild darf höchstens 10 MB groß sein.");
+ const clean=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
+ const path=`${courseId}/signals/${crypto.randomUUID()}_${clean}`;
+ const {error}=await _supabase.storage.from(BA_BUCKET).upload(path,file,{upsert:false,contentType:file.type});
+ if(error)throw error;return path;
+}
+async function baLoadCoTrainers(courseId){
+ const el=$("baCoTrainers");if(!el)return;
+ const {data,error}=await _supabase.from("course_co_trainers").select("trainer_email").eq("course_id",courseId);
+ el.innerHTML=error?`<p class="muted">${esc(error.message)} – TEST-SQL ausführen.</p>`:
+   (data||[]).map(x=>`<div class="signal-card">${esc(x.trainer_email)}${window.baCourseOwner?` <button class="danger btn-remove-cotrainer" data-email="${esc(x.trainer_email)}">Entfernen</button>`:""}</div>`).join("")||'<p class="muted">Noch keine Co-Trainer eingeladen.</p>';
+}
+async function baLoadTrainerFiles(courseId){
+ const el=$("baTrainerFiles");if(!el)return;
+ const {data,error}=await _supabase.from("course_trainer_files").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ el.innerHTML=error?`<p class="muted">${esc(error.message)} – TEST-SQL ausführen.</p>`:
+ (data||[]).map(x=>`<div class="signal-card"><b>${esc(x.original_filename)}</b><p>${esc(x.sender_email)} → ${esc(x.recipient_email)}</p>${x.message?`<p>${esc(x.message)}</p>`:""}<button class="btn-trainer-file" data-path="${esc(x.storage_path)}">📎 Öffnen</button></div>`).join("")||'<p class="muted">Noch keine Dateien ausgetauscht.</p>';
+}
+async function baCourseExtras(courseId,isTrainer){
+
+ baCourse={trainer:isTrainer};const old=$("baExtras");if(old)old.remove();
+ const wrap=document.createElement("div");wrap.id="baExtras";wrap.innerHTML=`<div class="panel"><h3>👨‍🏫 Kurs-Trainer</h3><div id="baCoTrainers"></div></div><div class="panel"><h3>📎 Trainer-Dateiaustausch</h3><div id="baTrainerFiles"></div>${isTrainer?'<button id="baSendTrainerFile" class="primary">Datei an Trainer senden</button>':''}</div><div class="panel"><h3>👥 Kursteilnehmer</h3><div id="baMembers"></div></div><div class="panel"><h3>🚦 Kurssignale</h3>${isTrainer?'<button id="baAddSignal" class="primary">＋ Kurssignal</button>':''}<div id="baSignals"></div></div><div class="panel"><h3>📢 Kursmitteilungen</h3><div id="baPopups"></div></div><div class="panel"><h3>💬 Privater Kurschat</h3><div id="baChat"></div></div>`;
+ $("courseDetail").appendChild(wrap);
+ await baLoadMembers();
+ await baLoadCoTrainers(courseId);
+ await baLoadTrainerFiles(courseId);
+ const {data:ss,error:se}=await _supabase.from("course_signals").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ if(!se){for(const sig of ss||[]){if(String(sig.image||"").startsWith("course-storage:")){
+   const path=sig.image.slice("course-storage:".length);
+   const {data:urlData}=await _supabase.storage.from(BA_BUCKET).createSignedUrl(path,3600);
+   sig.image=urlData?.signedUrl||"";
+ }}}
+ $("baSignals").innerHTML=se?esc(se.message):(ss||[]).map(x=>`<div class="signal-card"><b>${esc(x.short)} – ${esc(x.long)}</b><p>${esc(x.meaning)}</p>${x.image?`<img class="signal-image" src="${esc(x.image)}" alt="Signal">`:""}${isTrainer?`<button class="danger btn-delete-course-signal" data-id="${esc(x.id)}">Löschen</button>`:""}</div>`).join("")||"<p class='muted'>Noch keine Kurssignale.</p>";
+ const {data:pp,error:pe}=await _supabase.from("course_popups").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ $("baPopups").innerHTML=pe?esc(pe.message):(pp||[]).map(x=>`<div class="signal-card"><b>${esc(x.title)}</b><p>${esc(x.message)}</p>${isTrainer?`<button type="button" class="danger btn-delete-course-popup" data-id="${esc(x.id)}">Popup löschen</button>`:""}</div>`).join("")||"<p class='muted'>Keine Mitteilungen.</p>";
+ if(isTrainer){$("baChat").textContent="Wähle oben einen Schüler für den privaten Chat.";$("baAddSignal").onclick=()=>baDialog("Kurssignal hinzufügen",'<p>Vorhandene Signale aus deiner Sammlung übernehmen (dein Original bleibt erhalten):</p>'+ (signals.length?'<div class="group-signal-picker">'+signals.map((sig,i)=>`<label><input type="checkbox" name="existing_signal" value="${i}"> <span>${esc(sig.short)} – ${esc(sig.long)}</span></label>`).join("")+'</div>':'<p class="muted">Keine eigenen Signale vorhanden.</p>')+'<hr><h3>Neues Kurssignal erstellen</h3>'+baField("short","Kurzbezeichnung","text",false)+baField("long","Langbezeichnung","text",false)+'<label>Bedeutung<textarea name="meaning"></textarea></label>'+baField("category","Kategorie","text",false)+baField("image","Bild-URL","url",false)+'<label>Bild aus Galerie / Dateien<input name="imagefile" type="file" accept="image/*"></label><label>Kamera<input name="camerafile" type="file" accept="image/*" capture="environment"></label>',async f=>{
+ const chosen=f.getAll("existing_signal").map(i=>signals[Number(i)]).filter(Boolean);
+ const short=String(f.get("short")||"").trim(),long=String(f.get("long")||"").trim(),meaning=String(f.get("meaning")||"").trim();
+ const hasNew=!!(short||long||meaning||f.get("image")||f.get("imagefile")?.size||f.get("camerafile")?.size);
+ if(hasNew&&(!short||!long||!meaning))throw Error("Bitte das neue Signal vollständig mit Kurzbezeichnung, Langbezeichnung und Bedeutung ausfüllen.");
+ if(!chosen.length&&!hasNew)throw Error("Bitte vorhandene Signale auswählen oder ein neues Signal vollständig ausfüllen.");
+ const rows=chosen.map(sig=>({course_id:activeCourseId,source_signal_id:sig.id,short:sig.short,long:sig.long,meaning:sig.meaning,category:sig.category||null,image:sig.image||null}));
+ if(hasNew){
+  const file=f.get("imagefile")?.size?f.get("imagefile"):f.get("camerafile")?.size?f.get("camerafile"):null;
+  let image=f.get("image")||null;
+  if(file){if(!file.type.startsWith("image/"))throw Error("Bitte eine Bilddatei auswählen.");const uploaded=await baUploadCourseImage(file,activeCourseId);image="course-storage:"+uploaded;}
+  rows.push({course_id:activeCourseId,source_signal_id:null,short,long,meaning,category:f.get("category")||null,image});
+ }
+ const {error}=await _supabase.from("course_signals").insert(rows);if(error)throw error;
+});}
+ else {const {data:ts,error:te}=await _supabase.from("course_threads").select("*").eq("course_id",courseId).eq("participant_user_id",currentUser.id).maybeSingle();if(te)$("baChat").textContent=te.message;else if(ts)baRenderChat(ts.id);else $("baChat").textContent="Dein Trainer hat noch keinen Chat eröffnet.";}
+}
+async function baRenderChat(threadId){
+ const el=$("baChat");if(!el)return;
+ const {data,error}=await _supabase.from("course_messages").select("*").eq("thread_id",threadId).order("created_at");if(error){el.textContent=error.message;return;}
+ el.innerHTML=(data||[]).map(m=>`<div class="signal-card"><small>${m.sender_user_id===currentUser.id?"Du":"Gegenüber"} · ${new Date(m.created_at).toLocaleString("de-DE")}</small><p>${esc(m.body)}</p></div>`).join("")+'<form id="baChatForm"><textarea name="body" placeholder="Nachricht schreiben" required></textarea><button class="primary">Senden</button></form>';
+ $("baChatForm").onsubmit=async e=>{e.preventDefault();const body=new FormData(e.currentTarget).get("body").trim();if(!body)return;const {error}=await _supabase.from("course_messages").insert({thread_id:threadId,sender_user_id:currentUser.id,body});if(error)alert(error.message);else baRenderChat(threadId);};
+}
+async function baReview(materialId){
+ const {data,error}=await _supabase.from("course_submissions").select("*").eq("material_id",materialId).order("created_at",{ascending:false});if(error)throw error;
+ const el=$("baChat");el.innerHTML='<h3>Abgaben für diese Hausaufgabe</h3>'+((data||[]).map(x=>`<div class="signal-card"><b>${esc(x.user_email)}</b><p>${esc(x.submission_text)}</p><small>Status: ${esc(x.status||"eingereicht")}</small><div class="actions">${x.storage_path||x.file_data?`<button class="btn-review-file" data-id="${esc(x.id)}">Datei öffnen</button>`:""}<button class="btn-review-status" data-id="${esc(x.id)}">Status ändern</button></div></div>`).join("")||"<p>Keine Abgaben.</p>");window.baSubmissions=new Map((data||[]).map(x=>[x.id,x]));
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("button");if(!b||!activeCourseId||!$("courseDetail")||$("courseDetail").hidden)return;
+ try{
+ if(b.id==="courseAddCoTrainerBtn")baDialog("Freigeschalteten Co-Trainer einladen",baField("email","E-Mail-Adresse des Trainers","email"),async f=>{
+   const {error}=await _supabase.from("course_co_trainers").insert({course_id:activeCourseId,trainer_email:String(f.get("email")).trim().toLowerCase()});if(error)throw error;
+ });
+ if(b.classList.contains("btn-remove-cotrainer")&&window.baCourseOwner&&confirm("Co-Trainer entfernen?")){
+   const {error}=await _supabase.from("course_co_trainers").delete().eq("course_id",activeCourseId).eq("trainer_email",b.dataset.email);if(error)throw error;openCourse(activeCourseId);
+ }
+ if(b.id==="baSendTrainerFile"){
+   const {data:ct,error:ce}=await _supabase.from("course_co_trainers").select("trainer_email").eq("course_id",activeCourseId);if(ce)throw ce;
+   const {data:course}=await _supabase.from("courses").select("trainer_email").eq("id",activeCourseId).single();
+   const recipients=[...new Set([course?.trainer_email,...(ct||[]).map(x=>x.trainer_email)].filter(x=>x&&x.toLowerCase()!==currentUser.email.toLowerCase()))];
+   if(!recipients.length)throw Error("Noch kein anderer Trainer in diesem Kurs.");
+   baDialog("Datei an Co-Trainer senden",'<label>Empfänger<select name="recipient" required>'+recipients.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join("")+'</select></label><label>Nachricht<textarea name="message"></textarea></label><label>Datei (max. 15 MB)<input type="file" name="file" required></label>',async f=>{
+     const file=f.get("file");if(!file?.size)throw Error("Datei auswählen.");if(file.size>15*1024*1024)throw Error("Datei zu groß.");
+     const path=`${activeCourseId}/trainer-files/${crypto.randomUUID()}_${file.name.replace(/[^a-zA-Z0-9._-]/g,"_")}`;
+     const {error:ue}=await _supabase.storage.from(BA_BUCKET).upload(path,file,{upsert:false});if(ue)throw ue;
+     const {error}=await _supabase.from("course_trainer_files").insert({course_id:activeCourseId,sender_email:currentUser.email.toLowerCase(),recipient_email:f.get("recipient"),storage_path:path,original_filename:file.name,message:f.get("message")||null});if(error)throw error;
+   });
+ }
+ if(b.classList.contains("btn-trainer-file")){await baOpenFile({storage_path:b.dataset.path});}
+ if(b.id==="courseAddMemberBtn")baDialog("Schüler hinzufügen",baField("email","E-Mail-Adresse","email"),async f=>{const {error}=await _supabase.from("course_members").insert({course_id:activeCourseId,user_email:String(f.get("email")).trim().toLowerCase()});if(error)throw error;});
+ if(b.id==="courseAddMaterialBtn"||b.id==="courseAddHomeworkBtn"){
+  const homework=b.id==="courseAddHomeworkBtn";
+  baDialog(homework?"Hausaufgabe erstellen":"Lernmaterial hinzufügen",baField("title","Titel")+'<label>Beschreibung<textarea name="description"></textarea></label>'+(homework?baField("due","Abgabefrist (optional)","datetime-local",false):"")+'<label>Datei (optional, max. 15 MB)<input name="file" type="file"></label>',async f=>{
+   const file=f.get("file"),upload=file?.size?await baUpload(file,activeCourseId,"materials"):{};
+   const {error}=await _supabase.from("course_materials").insert({course_id:activeCourseId,title:f.get("title"),description:f.get("description"),is_homework:homework,due_date:f.get("due")?new Date(f.get("due")).toISOString():null,...upload});if(error)throw error;
+  });
+ }
+ if(b.id==="coursePopupBtn")baDialog("Kursmitteilung senden",baField("title","Titel")+'<label>Nachricht<textarea name="message" required></textarea></label>',async f=>{const {error}=await _supabase.from("course_popups").insert({course_id:activeCourseId,title:f.get("title"),message:f.get("message")});if(error)throw error;});
+ if(b.classList.contains("btn-submit-hw"))baDialog("Hausaufgabe abgeben",'<label>Deine Antwort<textarea name="answer" required></textarea></label><label>Datei (optional, max. 15 MB)<input type="file" name="file"></label>',async f=>{const file=f.get("file"),upload=file?.size?await baUpload(file,activeCourseId,"submissions",b.dataset.id):{};const {error}=await _supabase.from("course_submissions").insert({material_id:b.dataset.id,user_email:currentUser.email.toLowerCase(),submission_text:f.get("answer"),status:"eingereicht",...upload});if(error)throw error;});
+ if(b.classList.contains("btn-review-hw"))await baReview(b.dataset.id);
+ if(b.classList.contains("btn-review-file"))await baOpenFile(window.baSubmissions.get(b.dataset.id));
+ if(b.classList.contains("btn-review-status"))baDialog("Abgabe bewerten",'<label>Status<select name="status"><option value="eingereicht">Eingereicht</option><option value="geprüft">Geprüft</option><option value="angenommen">Angenommen</option><option value="überarbeiten">Überarbeiten</option></select></label>',async f=>{const {error}=await _supabase.from("course_submissions").update({status:f.get("status")}).eq("id",b.dataset.id);if(error)throw error;});
+ if(b.classList.contains("btn-course-file"))await baOpenFile(window.baMaterials.get(b.dataset.id));
+ if(b.classList.contains("btn-delete-material")&&confirm("Material wirklich entfernen?")){const {error}=await _supabase.from("course_materials").delete().eq("id",b.dataset.id);if(error)throw error;openCourse(activeCourseId);}
+ if(b.classList.contains("btn-delete-course-signal")&&confirm("Kurssignal entfernen?")){const {error}=await _supabase.from("course_signals").delete().eq("id",b.dataset.id);if(error)throw error;openCourse(activeCourseId);}
+  if(b.classList.contains("btn-delete-course-popup")&&confirm("Dieses Popup wirklich löschen? Es wird aus dem Kurs entfernt.")){const {error}=await _supabase.from("course_popups").delete().eq("id",b.dataset.id).eq("course_id",activeCourseId);if(error)throw error;openCourse(activeCourseId);notify("Popup gelöscht.");}
+ if(b.classList.contains("btn-remove-member")&&confirm("Schüler aus Kurs entfernen?")){const {error}=await _supabase.from("course_members").delete().eq("id",b.dataset.id);if(error)throw error;openCourse(activeCourseId);}
+ if(b.classList.contains("btn-open-chat")){const email=b.dataset.email;const {data:threadId,error:te}=await _supabase.rpc("ba_open_course_chat",{p_course_id:activeCourseId,p_student_email:email});if(te)throw te;if(!threadId)throw Error("Chat konnte nicht eröffnet werden.");baRenderChat(threadId);}
+ }catch(err){alert("Fehler: "+err.message);}
+});
+
+
+/* GLEISCAMPUS WEB-PRÄSENTATIONEN (MVP): private Einzel-HTML-Dateien, Kursrechte über RLS. */
+const GC_PRESENTATION_BUCKET="course-presentations";
+const GC_PRESENTATION_MAX=10*1024*1024;
+let gcPresentationRows=new Map();
+let gcPresentationObjectUrl=null;
+function gcBytes(n){return n>=1048576?(n/1048576).toFixed(1)+" MB":Math.round(n/1024)+" KB";}
+function gcDb(){return new Promise((resolve,reject)=>{
+ const r=indexedDB.open("gleiscampus-presentations-v1",1);
+ r.onupgradeneeded=()=>r.result.createObjectStore("presentations");
+ r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);
+});}
+async function gcOffline(action,key,value){const db=await gcDb();return new Promise((resolve,reject)=>{
+ const tx=db.transaction("presentations",action==="get"?"readonly":"readwrite");
+ const st=tx.objectStore("presentations");const req=action==="put"?st.put(value,key):action==="delete"?st.delete(key):st.get(key);
+ req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);
+ tx.oncomplete=()=>db.close();
+});}
+function gcOfflineKey(id){return String(currentUser?.id||"")+":"+id;}
+async function gcFetchHtml(row){
+ const {data,error}=await _supabase.storage.from(GC_PRESENTATION_BUCKET).download(row.storage_path);
+ if(error)throw error;
+ return await data.text();
+}
+function gcOpenViewer(html,title){
+ document.getElementById("gcPresentationViewer")?.remove();
+ const overlay=document.createElement("div");overlay.id="gcPresentationViewer";
+ overlay.style="position:fixed;inset:0;z-index:9999;background:#10131a;display:flex;flex-direction:column;padding:10px;gap:8px";
+ const bar=document.createElement("div");bar.style="display:flex;gap:12px;align-items:center;color:white";
+ const heading=document.createElement("strong");heading.textContent=title;heading.style="flex:1";
+ const close=document.createElement("button");close.textContent="✕ Schließen";close.onclick=()=>overlay.remove();
+ bar.append(heading,close);
+ const frame=document.createElement("iframe");frame.title=title;
+ frame.setAttribute("sandbox","allow-scripts allow-popups");
+ frame.setAttribute("referrerpolicy","no-referrer");
+ frame.style="flex:1;width:100%;border:0;background:white;border-radius:8px";
+ // Kein allow-same-origin: Präsentationsskripte erhalten keinen Zugriff auf GleisCampus.
+ frame.srcdoc=html;
+ overlay.append(bar,frame);document.body.append(overlay);
+}
+async function gcLoadPresentations(courseId,isTrainer){
+ const trainer=$("gcPresentationTrainer"),list=$("gcPresentationList"),usage=$("gcPresentationUsage");
+ if(!trainer||!list)return;
+ const {data:locks,error:lockError}=await _supabase.from("course_upload_controls").select("presentations_enabled,presentations_locked").eq("course_id",courseId).maybeSingle();
+ const enabled=!lockError&&!!locks?.presentations_enabled;
+ $("gcPresentationsSection").hidden=!enabled;
+ if(!enabled){trainer.hidden=true;list.innerHTML="";if(usage)usage.textContent="";return;}
+ trainer.hidden=!isTrainer||!!locks?.presentations_locked;
+ const {data,error}=await _supabase.from("course_presentations").select("*").eq("course_id",courseId).order("created_at",{ascending:false});
+ if(error){list.textContent="Präsentationen nicht verfügbar. Bitte zuerst die SQL-Migration ausführen: "+error.message;return;}
+ gcPresentationRows=new Map((data||[]).map(x=>[x.id,x]));
+ const total=(data||[]).reduce((n,x)=>n+Number(x.size_bytes||0),0);
+ usage.textContent="In diesem Kurs: "+gcBytes(total)+" Web-Präsentationen. Supabase-Free-Kontingent gilt für alle Buckets zusammen.";
+ list.innerHTML=(data||[]).map(x=>`<details class="gc-presentation-item"><summary><strong>📽️ ${esc(x.title)}</strong> <small>${gcBytes(x.size_bytes)} · ${new Date(x.created_at).toLocaleDateString("de-DE")}</small></summary><div class="actions"><button type="button" class="primary gc-pres-open" data-id="${esc(x.id)}">▶ Öffnen</button><button type="button" class="gc-pres-offline" data-id="${esc(x.id)}">⬇ In GleisCampus offline speichern</button><button type="button" class="gc-pres-clear" data-id="${esc(x.id)}">Offline-Kopie entfernen</button>${isTrainer?`<button type="button" class="danger gc-pres-delete" data-id="${esc(x.id)}">Löschen</button>`:""}</div></details>`).join("")||"<p class='muted'>Noch keine Präsentationen in diesem Kurs.</p>";
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("button");if(!b||!b.id&&!b.classList.contains("gc-pres-open")&&!b.classList.contains("gc-pres-offline")&&!b.classList.contains("gc-pres-clear")&&!b.classList.contains("gc-pres-delete"))return;
+ if(b.id!=="gcPresentationUpload"&&!b.classList.contains("gc-pres-open")&&!b.classList.contains("gc-pres-offline")&&!b.classList.contains("gc-pres-clear")&&!b.classList.contains("gc-pres-delete"))return;
+ b.disabled=true;
+ try{
+  if(b.id==="gcPresentationUpload"){
+   if($("gcPresentationTrainer").hidden)throw Error("Nur Trainer dürfen Präsentationen hochladen.");
+   const title=$("gcPresentationTitle").value.trim(),file=$("gcPresentationFile").files[0];
+   if(!title||!file)throw Error("Bitte Titel und HTML-Datei auswählen.");
+   if(!/\.html?$/i.test(file.name))throw Error("Bitte eine eigenständige HTML-Webpräsentation auswählen.");
+   if(file.size>GC_PRESENTATION_MAX)throw Error("Datei ist größer als 10 MB.");
+   const path=`${activeCourseId}/${crypto.randomUUID()}.html`;
+   const {error:up}=await _supabase.storage.from(GC_PRESENTATION_BUCKET).upload(path,file,{contentType:"text/html",upsert:false});if(up)throw up;
+   const {error:db}=await _supabase.from("course_presentations").insert({course_id:activeCourseId,title,storage_path:path,size_bytes:file.size,uploaded_by:currentUser.id});
+   if(db){await _supabase.storage.from(GC_PRESENTATION_BUCKET).remove([path]);throw db;}
+   $("gcPresentationTitle").value="";$("gcPresentationFile").value="";
+   notify("Präsentation hochgeladen.");await gcLoadPresentations(activeCourseId,true);
+  }else{
+   const row=gcPresentationRows.get(b.dataset.id);if(!row)throw Error("Präsentation nicht gefunden.");
+   const key=gcOfflineKey(row.id);
+   if(b.classList.contains("gc-pres-open")){
+    const cached=await gcOffline("get",key);
+    gcOpenViewer(cached?.html||await gcFetchHtml(row),row.title);
+   }else if(b.classList.contains("gc-pres-offline")){
+    const html=await gcFetchHtml(row);
+    await gcOffline("put",key,{html,title:row.title,created_at:Date.now()});
+    notify("Auf diesem Gerät gespeichert. Offline verfügbar, solange GleisCampus geöffnet ist.");
+   }else if(b.classList.contains("gc-pres-clear")){
+    await gcOffline("delete",key);notify("Lokale Offline-Kopie entfernt.");
+   }else if(b.classList.contains("gc-pres-delete")){
+    if(!confirm("Präsentation für alle Kursteilnehmer löschen?"))return;
+    const {error}=await _supabase.from("course_presentations").delete().eq("id",row.id);if(error)throw error;
+    const {error:se}=await _supabase.storage.from(GC_PRESENTATION_BUCKET).remove([row.storage_path]);if(se)notify("Datensatz gelöscht, Speicherdatei bitte prüfen: "+se.message);
+    await gcLoadPresentations(activeCourseId,true);
+   }
+  }
+ }catch(err){notify("Präsentation: "+err.message);}finally{b.disabled=false;}
+});
+
+/* SUPPORT & POSTFACH – Tickets mit fortlaufendem Nachrichtenverlauf */
+const SUPPORT_CATEGORIES={
+  Problem:"⚠️ Problem melden",
+  Bewertung:"⭐ Bewertung abgeben",
+  Verbesserungsvorschlag:"💡 Verbesserungsvorschlag"
+};
+const isSupportAdmin=()=>String(currentUser?.email||"").toLowerCase()===ADMIN_EMAIL.toLowerCase();
+
+async function getSupportReplies(ticketIds){
+  if(!ticketIds.length)return [];
+  const {data,error}=await _supabase.from("support_replies").select("*").in("ticket_id",ticketIds).order("created_at",{ascending:true});
+  if(error)throw error;
+  return data||[];
+}
+function supportThreadHtml(ticket,replies,adminView=false){
+  const messages=[{sender_role:"user",sender_email:ticket.user_email,message:ticket.message,created_at:ticket.created_at},...(replies||[])];
+  if(!replies?.length&&ticket.admin_reply)messages.push({sender_role:"admin",sender_email:"Support",message:ticket.admin_reply,created_at:ticket.updated_at||ticket.created_at});
+  return `<div class="signal-card support-ticket" data-ticket="${esc(ticket.id)}">
+    <div class="row" style="justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span class="ticket-tag">${esc(SUPPORT_CATEGORIES[ticket.category]||ticket.category||"Sonstige")}</span><small>${esc(ticket.user_email||"")}</small></div>
+    <div class="support-thread" style="margin-top:10px">${messages.map(m=>`<div class="admin-reply-box" style="margin:8px 0"><strong>${m.sender_role==="admin"?"🛡️ Support":"👤 Nutzer"}:</strong><p style="white-space:pre-wrap;margin:5px 0">${esc(m.message)}</p><small>${m.created_at?new Date(m.created_at).toLocaleString("de-DE"):""}</small></div>`).join("")}</div>
+    ${adminView?`<textarea id="reply_${esc(ticket.id)}" placeholder="Antwort schreiben..." rows="3"></textarea><div class="actions"><button type="button" class="good btn-admin-reply" data-id="${esc(ticket.id)}">Antwort senden</button>${ticket.status!=="closed"?`<button type="button" class="danger btn-close-ticket" data-id="${esc(ticket.id)}">Ticket schließen</button>`:""}</div>`:
+      (ticket.status!=="closed"?`<textarea id="user_reply_${esc(ticket.id)}" placeholder="Deine Antwort..." rows="3"></textarea><button type="button" class="primary btn-user-ticket-reply" data-id="${esc(ticket.id)}">Antwort senden</button>`:`<p class="muted">Dieses Ticket wurde geschlossen.</p>`)}
+  </div>`;
+}
+async function sendSupportMessage(){
+  const category=$("supportCategory").value;
+  const message=$("supportMessage").value.trim();
+  if(!message)return notify("Bitte Nachricht eingeben.");
+  try{
+    const {error}=await _supabase.from("support_messages").insert([{user_id:currentUser.id,user_email:currentUser.email,category,message,status:"open"}]);
+    if(error)throw error;
+    $("supportMessage").value="";notify("Gesendet!");loadUserInbox();showPage("inbox");
+  }catch(err){notify("Fehler: "+err.message);}
+}
+async function loadUserInbox(markAsRead=false){
+  if(!currentUser)return;
+  const container=$("userInboxList");
+  try{
+    const {data,error}=await _supabase.from("support_messages").select("*").eq("user_id",currentUser.id).order("created_at",{ascending:false});
+    if(error)throw error;
+    const tickets=data||[];const replies=await getSupportReplies(tickets.map(t=>t.id));
+    const unread=tickets.filter(t=>t.admin_reply&&!t.is_read).length;
+    $("inboxUnreadBadge").hidden=(unread===0);$("inboxUnreadBadge").textContent=unread;updateFriendNotificationDot();
+    if(markAsRead&&unread>0){await _supabase.from("support_messages").update({is_read:true}).eq("user_id",currentUser.id).not("admin_reply","is",null);$("inboxUnreadBadge").hidden=true;updateFriendNotificationDot();}
+    container.innerHTML=tickets.length?tickets.map(t=>{
+      const status=t.status|| (t.admin_reply?"answered":"open");
+      const label=status==="closed"?"🔒 Geschlossen":status==="answered"?"📨 Beantwortet":"🟡 Offen";
+      const replyList=replies.filter(r=>r.ticket_id===t.id);
+      const lastMessage=replyList.length?replyList[replyList.length-1].message:t.message;
+      const preview=String(lastMessage||"").replace(/\s+/g," ").slice(0,90);
+      return `<details class="panel ticket-compact"><summary><span class="ticket-summary-main"><strong>${esc(SUPPORT_CATEGORIES[t.category]||t.category||"Support")}</strong><span class="ticket-tag">${label}</span><span class="ticket-summary-email">${esc(new Date(t.created_at).toLocaleDateString("de-DE"))} · ${esc(preview)}${String(lastMessage||"").length>90?"…":""}</span></span></summary><div class="ticket-content">${supportThreadHtml(t,replyList,false)}</div></details>`;
+    }).join(""):'<p class="muted">Du hast noch keine Support-Anfragen.</p>';
+  }catch(err){container.innerHTML=`<p class="muted">Postfach konnte nicht geladen werden: ${esc(err.message)}</p>`;}
+}
+function adminTicketCardHtml(ticket,replies){
+  const list=replies.filter(r=>r.ticket_id===ticket.id);
+  const last=list.length?list[list.length-1].message:(ticket.admin_reply||ticket.message||"");
+  const preview=String(last).replace(/\s+/g," ").slice(0,110);
+  const date=ticket.created_at?new Date(ticket.created_at).toLocaleDateString("de-DE"):"";
+  const status=ticket.status||(ticket.admin_reply?"answered":"open");
+  const statusLabel=status==="closed"?"🔒 Geschlossen":status==="answered"?"📨 Beantwortet":"🟡 Offen";
+  return `<details class="panel admin-ticket-card"><summary><span class="ticket-tag">${esc(SUPPORT_CATEGORIES[ticket.category]||ticket.category||"Sonstige")}</span><span class="ticket-tag">${statusLabel}</span><strong>${esc(ticket.user_email||"Unbekannter Nutzer")}</strong><span class="admin-ticket-preview">${esc(date)} · ${esc(preview)}${String(last).length>110?"…":""}</span></summary><div class="ticket-content">${supportThreadHtml(ticket,list,true)}</div></details>`;
+}
+async function loadAdminSupport(){
+  const container=$("adminSupportList");if(!container)return;
+  try{
+    const {data,error}=_supabase.from?await _supabase.from("support_messages").select("*").order("created_at",{ascending:false}):{data:[],error:null};if(error)throw error;
+    const tickets=data||[];const replies=await getSupportReplies(tickets.map(t=>t.id));
+    const status=t=>t.status||(t.admin_reply?"answered":"open");
+    const query=String($("adminTicketSearch")?.value||"").trim().toLocaleLowerCase("de-DE");
+    const matches=t=>{
+      if(!query)return true;
+      const thread=replies.filter(r=>r.ticket_id===t.id).map(r=>r.message).join(" ");
+      return [t.id,t.user_email,t.category,t.message,t.admin_reply,thread].filter(Boolean).join(" ").toLocaleLowerCase("de-DE").includes(query);
+    };
+    const filtered=tickets.filter(matches);
+    const renderList=(list)=>list.length?list.map(t=>adminTicketCardHtml(t,replies)).join(""):'<p class="muted">Keine passenden Tickets gefunden.</p>';
+    const open=filtered.filter(t=>status(t)==="open");
+    container.innerHTML=renderList(open);
+    const answered=filtered.filter(t=>status(t)==="answered");
+    const folder=$("adminAnsweredFolders");
+    folder.innerHTML=answered.length?Object.keys(SUPPORT_CATEGORIES).map(cat=>{
+      const list=answered.filter(t=>t.category===cat);if(!list.length)return "";
+      return `<details class="panel admin-ticket-category"><summary>📂 ${esc(SUPPORT_CATEGORIES[cat])} <span class="ticket-count">${list.length}</span></summary><div class="admin-ticket-section-content">${renderList(list)}</div></details>`;
+    }).join(""):'<p class="muted">Keine passenden beantworteten Tickets im Postfach.</p>';
+    const closed=filtered.filter(t=>status(t)==="closed");
+    $("adminClosedTickets").innerHTML=renderList(closed);
+    $("adminOpenCount").textContent=open.length;
+    $("adminAnsweredCount").textContent=answered.length;
+    $("adminClosedCount").textContent=closed.length;
+  }catch(err){container.innerHTML=`<p class="muted">Support konnte nicht geladen werden: ${esc(err.message)}</p>`;}
+}
+
+$("adminTicketSearch")?.addEventListener("input",()=>loadAdminSupport());
+document.addEventListener("click",async e=>{
+  const adminReply=e.target.closest(".btn-admin-reply");
+  const userReply=e.target.closest(".btn-user-ticket-reply");
+  const closeTicket=e.target.closest(".btn-close-ticket");
+  try{
+    if(adminReply){
+      if(!isSupportAdmin())return;
+      const id=adminReply.dataset.id,text=$("reply_"+id).value.trim();if(!text)return notify("Bitte Antwort eingeben.");
+      const {error}=await _supabase.from("support_replies").insert([{ticket_id:id,sender_id:currentUser.id,sender_email:currentUser.email,sender_role:"admin",message:text}]);if(error)throw error;
+      const {error:updateError}=await _supabase.from("support_messages").update({admin_reply:text,is_read:false,status:"answered"}).eq("id",id);if(updateError)throw updateError;
+      notify("Antwort gesendet. Das Ticket liegt jetzt im passenden Postfachordner.");await loadAdminSupport();
+    }else if(userReply){
+      const id=userReply.dataset.id,text=$("user_reply_"+id).value.trim();if(!text)return notify("Bitte Antwort eingeben.");
+      const {data:ticket,error:readError}=await _supabase.from("support_messages").select("status").eq("id",id).single();if(readError)throw readError;if(ticket.status==="closed")return notify("Dieses Ticket ist geschlossen.");
+      const {error}=await _supabase.from("support_replies").insert([{ticket_id:id,sender_id:currentUser.id,sender_email:currentUser.email,sender_role:"user",message:text}]);if(error)throw error;
+      const {error:updateError}=await _supabase.from("support_messages").update({status:"open",is_read:false}).eq("id",id);if(updateError)throw updateError;
+      notify("Antwort gesendet. Das Ticket ist wieder offen.");await loadUserInbox();
+    }else if(closeTicket){
+      if(!isSupportAdmin())return;
+      if(!confirm("Ticket wirklich schließen? Der Nutzer kann danach nicht mehr antworten."))return;
+      const {error}=await _supabase.from("support_messages").update({status:"closed",closed_at:new Date().toISOString()}).eq("id",closeTicket.dataset.id);if(error)throw error;
+      notify("Ticket geschlossen.");await loadAdminSupport();
+    }
+  }catch(err){notify("Fehler: "+err.message);}
+});
+
+/* GRUNDLEGENDE SIGNAL-VERWALTUNG */
+async function loadCloudSignals(){
+  if(!currentUser)return;
+  try{
+    const {data,error}=await _supabase.from("signals").select("*").eq("user_id",currentUser.id);
+    if(error)throw error;
+    signals=data||[];
+    renderList();
+    nextLearn();
+  }catch(err){notify("Signale konnten nicht geladen werden: "+err.message);}
+}
+
+async function saveSignal(){
+  if(!currentUser)return notify("Bitte zuerst anmelden.");
+  const id=$("editId").value;
+  const short=$("shortName").value.trim();
+  const long=$("longName").value.trim();
+  const meaning=$("meaning").value.trim();
+  const categories=selectedSignalFormCategories();
+  if(!categories.length)return notify("Bitte mindestens eine Kategorie auswählen.");
+  const category=JSON.stringify(categories);
+  const regelwerk=$("regelwerk").value||null;
+  if(!short||!long||!meaning)return notify("Bitte alle drei Textfelder ausfüllen.");
+  const previous=id?signals.find(s=>String(s.id)===String(id)):null;
+  if(id&&!previous)return notify("Das Signal wurde nicht gefunden. Bitte neu laden.");
+  const imageValue=tempImageBase64||$("imageUrl").value.trim()||(previous?.image||"");
+  const payload={short,long,meaning,category,regelwerk,image:imageValue,user_id:currentUser.id};
+  const button=$("saveSignal");
+  button.disabled=true;
+  try{
+    const query=id
+      ?_supabase.from("signals").update(payload).eq("id",id).eq("user_id",currentUser.id).select("id")
+      :_supabase.from("signals").insert([payload]).select("id");
+    const {data,error}=await query;
+    if(error)throw error;
+    if(!data||!data.length)throw new Error("Keine Änderung gespeichert. Bitte Zugriffsrechte prüfen.");
+    clearForm();
+    await loadCloudSignals();
+    notify(id?"Signal erfolgreich aktualisiert!":"Signal erfolgreich gespeichert!");
+  }catch(err){
+    console.error("Signal speichern:",err);
+    notify("Speichern fehlgeschlagen: "+(err.message||err));
+  }finally{button.disabled=false;}
+}
+
+function editSignal(id){
+  const signal=signals.find(s=>String(s.id)===String(id));
+  if(!signal)return notify("Signal nicht gefunden.");
+  $("editId").value=signal.id;
+  $("shortName").value=signal.short||"";
+  $("longName").value=signal.long||"";
+  $("meaning").value=signal.meaning||"";
+  renderSignalCategoryChoices(getSignalCategories(signal));
+  $("regelwerk").value=signal.regelwerk||"";
+  $("imageUrl").value=signal.image?.startsWith("data:")?"":(signal.image||"");
+  tempImageBase64="";
+  $("imageFile").value="";
+  $("cameraFile").value="";
+  $("formTitle").textContent="✏️ Signal bearbeiten";
+  $("saveSignal").textContent="Änderungen speichern";
+  $("clearForm").textContent="Bearbeiten abbrechen";
+  $("formTitle").scrollIntoView({behavior:"smooth",block:"start"});
+  notify("Signal geladen. Änderungen vornehmen und speichern.");
+}
+
+async function deleteSignal(id){
+  if(!confirm("Wirklich löschen?"))return;
+  await _supabase.from("signals").delete().eq("id",id);
+  loadCloudSignals();
+}
+
+function clearForm(){
+  ["editId","shortName","longName","meaning","imageUrl","regelwerk"].forEach(id=>{if($(id))$(id).value="";});
+  tempImageBase64="";
+  renderSignalCategoryChoices([]);
+  $("imageFile").value="";
+  $("cameraFile").value="";
+  $("formTitle").textContent="Signal hinzufügen";
+  $("saveSignal").textContent="Signal speichern";
+  $("clearForm").textContent="Formular leeren";
+}
+
+function visibleSignals(){
+  const term=$("searchSignals").value.trim().toLocaleLowerCase("de-DE");
+  return signals.filter(s=>[s.short,s.long,s.meaning,...getSignalCategories(s)]
+    .some(v=>String(v||"").toLocaleLowerCase("de-DE").includes(term)));
+}
+
+function updateBulkToolbar(){
+  const visible=visibleSignals();
+  const selected=visible.filter(s=>selectedSignalIds.has(String(s.id)));
+  const all=$("selectAllSignals");
+  all.checked=visible.length>0&&selected.length===visible.length;
+  all.indeterminate=selected.length>0&&selected.length<visible.length;
+  $("selectionCount").textContent=selectedSignalIds.size+" ausgewählt";
+  $("shareSelected").disabled=selectedSignalIds.size===0||bulkDeleteRunning;
+  $("deleteSelected").disabled=selectedSignalIds.size===0||bulkDeleteRunning;
+  $("clearSelection").disabled=selectedSignalIds.size===0||bulkDeleteRunning;
+}
+
+function renderList(){
+  const container=$("signalList");
+  if(!container)return;
+  const valid=new Set(signals.map(s=>String(s.id)));
+  selectedSignalIds=new Set([...selectedSignalIds].filter(id=>valid.has(id)));
+  $("signalCount").textContent=signals.length;
+  const visible=visibleSignals();
+  container.innerHTML=visible.length?visible.map(s=>`
+    <div class="signal-card ${selectedSignalIds.has(String(s.id))?"selected":""}">
+      <label class="signal-select-row" style="cursor:pointer;">
+        <input type="checkbox" class="select-one-signal" data-id="${esc(s.id)}" ${selectedSignalIds.has(String(s.id))?"checked":""}>
+        <span>Dieses Signal auswählen</span>
+      </label>
+      <h3>${esc(s.short)} – ${esc(s.long)}</h3>
+      ${getSignalCategories(s).map(c=>`<span class="ticket-tag">${esc(CATEGORY_LABELS[c]||c)}</span>`).join(" ")}
+      <span class="ticket-tag">${s.regelwerk==="DS301"?"DS 301":s.regelwerk==="DV301"?"DV 301":"Nicht zugeordnet"}</span>
+      <p>${esc(s.meaning)}</p>
+      <div class="actions">
+        <button type="button" class="primary btn-edit-sig" data-id="${esc(s.id)}">✏️ Bearbeiten</button>
+        <button type="button" class="btn-share" data-id="${esc(s.id)}">Teilen</button>
+        <button type="button" class="danger btn-delete-sig" data-id="${esc(s.id)}">Löschen</button>
+      </div>
+    </div>`).join(""):'<p class="muted">'+(signals.length?'Keine passenden Signale gefunden.':'Noch keine Signale gespeichert.')+'</p>';
+  updateBulkToolbar();
+}
+
+async function deleteSelectedSignals(){
+  if(!currentUser||bulkDeleteRunning)return;
+  const ids=[...selectedSignalIds];
+  if(!ids.length)return;
+  if(!confirm(ids.length+" ausgewählte Signale wirklich löschen?"))return;
+  bulkDeleteRunning=true;
+  updateBulkToolbar();
+  try{
+    const {data,error}=await _supabase.from("signals").delete()
+      .eq("user_id",currentUser.id).in("id",ids).select("id");
+    if(error)throw error;
+    const deleted=new Set((data||[]).map(s=>String(s.id)));
+    deleted.forEach(id=>selectedSignalIds.delete(id));
+    await loadCloudSignals();
+    notify(deleted.size+" Signale gelöscht."+(deleted.size<ids.length?" Einige konnten nicht gelöscht werden.":""));
+  }catch(err){notify("Löschen fehlgeschlagen: "+err.message);}
+  finally{bulkDeleteRunning=false;updateBulkToolbar();}
+}
+
+function openShareDialog(chosen){
+  if(!currentUser||!chosen.length)return;
+  sharePendingSignals=chosen;
+  $("shareDialogInfo").textContent=chosen.length+" Signal(e) an einen Freund oder eine E-Mail-Adresse senden.";
+  $("shareRecipient").value="";
+  if(typeof $("shareDialog").showModal==="function")$("shareDialog").showModal();
+  else $("shareDialog").setAttribute("open","");
+  $("shareRecipient").focus();
+}
+function closeShareDialog(){
+  if($("shareDialog").open)$("shareDialog").close();
+  sharePendingSignals=[];
+}
+async function confirmShareDialog(){
+  const email=$("shareRecipient").value.trim().toLowerCase();
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))return notify("Bitte gültige E-Mail-Adresse eingeben.");
+  if(!sharePendingSignals.length)return;
+  const button=$("confirmShareDialog"),oldLabel=button.textContent;button.disabled=true;button.textContent="Wird gesendet …";
+  $("shareProgress").hidden=false;$("shareProgressText").textContent=sharePendingSignals.length+" Signal(e) werden übertragen. Bitte Fenster geöffnet lassen …";
+  try{
+    const payload=sharePendingSignals.map(s=>({sender_email:currentUser.email,recipient_email:email,signal_data:s}));
+    const {error}=await _supabase.from("shared_signals").insert(payload);
+    if(error)throw error;
+    const sent=sharePendingSignals.length;
+    selectedSignalIds.clear();closeShareDialog();renderList();
+    notify(sent+" Signal(e) erfolgreich geteilt.");
+  }catch(err){notify("Teilen fehlgeschlagen: "+err.message);}
+  finally{button.disabled=false;button.textContent=oldLabel;$("shareProgress").hidden=true;}
+}
+function shareSelectedSignals(){
+  openShareDialog(signals.filter(s=>selectedSignalIds.has(String(s.id))));
+}
+
+document.addEventListener("click", e=>{
+  const edit=e.target.closest(".btn-edit-sig");
+  const del=e.target.closest(".btn-delete-sig");
+  const share=e.target.closest(".btn-share");
+  if(edit)editSignal(edit.dataset.id);
+  if(del)deleteSignal(del.dataset.id);
+  if(share)shareSignalPrompt(share.dataset.id);
+});
+
+function shareSignalPrompt(signalId){
+  const signal=signals.find(s=>String(s.id)===String(signalId));
+  if(signal)openShareDialog([signal]);
+}
+
+let sharedBulkRunning=false;
+async function loadSharedSignals(){
+  if(!currentUser)return;
+  try{
+    const {data,error}=await _supabase.from("shared_signals").select("*").eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending");
+    if(error)throw error;
+    $("sharedBadge").hidden=!(data||[]).length;
+    $("sharedBadge").textContent=(data||[]).length;
+    $("sharedBulkActions").hidden=!(data||[]).length;
+    $("sharedPendingCount").textContent=(data||[]).length+" ausstehende Signale";
+    updateFriendNotificationDot();
+    $("sharedSignalsList").innerHTML=(data||[]).map(item=>`
+      <div class="signal-card">
+        <p>Von: ${esc(item.sender_email)}</p>
+        <h3>${esc(item.signal_data.short)}</h3>
+        <div class="actions">
+          <button type="button" class="good btn-accept-shared" data-id="${esc(item.id)}">Übernehmen</button>
+          <button type="button" class="danger btn-remove-shared" data-id="${esc(item.id)}">Entfernen</button>
+        </div>
+      </div>`).join("")||"<p class='muted'>Keine.</p>";
+  }catch(err){
+    $("sharedSignalsList").textContent="Geteilte Signale konnten nicht geladen werden: "+err.message;
+  }
+}
+
+async function processAllShared(accept){
+  if(!currentUser||sharedBulkRunning)return;
+  const email=currentUser.email.toLowerCase();
+  const {data:items,error:loadError}=await _supabase.from("shared_signals")
+    .select("*").eq("recipient_email",email).eq("status","pending");
+  if(loadError)return notify("Geteilte Signale konnten nicht geladen werden: "+loadError.message);
+  if(!items?.length){await loadSharedSignals();return notify("Keine ausstehenden Signale.");}
+  const action=accept?"übernehmen":"ablehnen";
+  if(!confirm(`Wirklich alle ${items.length} geteilten Signale ${action}?`))return;
+  sharedBulkRunning=true;
+  const buttons=[$("acceptAllShared"),$("rejectAllShared")];
+  buttons.forEach(b=>b.disabled=true);
+  $("sharedBulkProgress").hidden=false;
+  let completed=0;$("sharedBulkProgressText").textContent="0 von "+items.length+" Signalen "+(accept?"übernommen":"abgelehnt")+" …";
+  try{
+    for(const item of items){
+      if(accept){
+        // Zuerst kopieren, erst danach die Freigabe als angenommen markieren.
+        const {error:insertError}=await _supabase.from("signals").insert([{
+          short:item.signal_data.short,long:item.signal_data.long,
+          meaning:item.signal_data.meaning,category:item.signal_data.category||"Sonstige",
+          regelwerk:["DS301","DV301"].includes(item.signal_data.regelwerk)?item.signal_data.regelwerk:null,
+          image:item.signal_data.image||"",user_id:currentUser.id
+        }]);
+        if(insertError)throw insertError;
+        const {error:updateError}=await _supabase.from("shared_signals")
+          .update({status:"accepted"}).eq("id",item.id)
+          .eq("recipient_email",email).eq("status","pending");
+        if(updateError)throw updateError;
+      }else{
+        const {data:removed,error:deleteError}=await _supabase.from("shared_signals")
+          .delete().eq("id",item.id).eq("recipient_email",email)
+          .eq("status","pending").select("id");
+        if(deleteError)throw deleteError;
+        if(!removed?.length)throw Error("Freigabe konnte nicht entfernt werden.");
+      }
+      completed++;$("sharedBulkProgressText").textContent=completed+" von "+items.length+" Signalen verarbeitet …";
+    }
+    notify(completed+" geteilte Signale "+(accept?"übernommen.":"abgelehnt."));
+  }catch(err){
+    alert(`Aktion nach ${completed} von ${items.length} Signalen abgebrochen: ${err.message||err}`);
+  }finally{
+    sharedBulkRunning=false;
+    $("sharedBulkProgress").hidden=true;
+    buttons.forEach(b=>b.disabled=false);
+    await loadSharedSignals();
+    if(accept)await loadCloudSignals();
+  }
+}
+$("acceptAllShared").addEventListener("click",()=>processAllShared(true));
+$("rejectAllShared").addEventListener("click",()=>processAllShared(false));
+
+document.addEventListener("click",async e=>{
+  const btn=e.target.closest(".btn-remove-shared");
+  if(!btn||btn.disabled||!currentUser)return;
+  const card=btn.closest(".signal-card");
+  const buttons=card?Array.from(card.querySelectorAll("button")):[btn];
+  buttons.forEach(b=>b.disabled=true);
+  try{
+    // Nur die empfangene Freigabe entfernen, nicht das Originalsignal.
+    const {data,error}=await _supabase.from("shared_signals").delete()
+      .eq("id",btn.dataset.id)
+      .eq("recipient_email",currentUser.email.toLowerCase())
+      .eq("status","pending").select("id");
+    if(error)throw error;
+    if(!data?.length)throw Error("Die Freigabe konnte nicht entfernt werden. Sie ist nicht mehr vorhanden oder die Löschberechtigung fehlt.");
+    await loadSharedSignals();
+    notify("Geteiltes Signal entfernt.");
+  }catch(err){
+    alert("Entfernen fehlgeschlagen: "+(err.message||err)+(err.code?"\nFehlercode: "+err.code:""));
+  }finally{buttons.forEach(b=>b.disabled=false);}
+});
+
+document.addEventListener("click", async e=>{
+  const btn=e.target.closest(".btn-accept-shared");
+  if(!btn||btn.disabled||!currentUser)return;
+  const card=btn.closest(".signal-card"),oldLabel=btn.textContent;
+  btn.disabled=true;btn.textContent="Wird übernommen …";
+  let progress=card?.querySelector(".gc-card-progress");
+  if(card&&!progress){progress=document.createElement("div");progress.className="gc-progress gc-card-progress";progress.innerHTML='<span class="gc-spinner"></span><span>Signal wird in deine Sammlung kopiert …</span>';card.insertBefore(progress,card.querySelector(".actions"));}
+  try{
+    const {data,error:readError}=await _supabase.from("shared_signals").select("*").eq("id",btn.dataset.id).single();
+    if(readError)throw readError;if(!data)throw Error("Freigabe nicht gefunden.");
+    const signal=data.signal_data||{};
+    const {error:insertError}=await _supabase.from("signals").insert([{
+      short:signal.short,long:signal.long,meaning:signal.meaning,category:signal.category||"Sonstige",
+      regelwerk:["DS301","DV301"].includes(signal.regelwerk)?signal.regelwerk:null,
+      image:signal.image||"",user_id:currentUser.id
+    }]);
+    if(insertError)throw insertError;
+    const {error:updateError}=await _supabase.from("shared_signals").update({status:"accepted"}).eq("id",btn.dataset.id).eq("status","pending");
+    if(updateError)throw updateError;
+    notify("Signal erfolgreich übernommen!");
+    await loadSharedSignals();await loadCloudSignals();
+  }catch(err){
+    notify("Übernehmen fehlgeschlagen: "+(err.message||err));
+    btn.disabled=false;btn.textContent=oldLabel;if(progress)progress.remove();
+  }
+});
+
+/* LERNMODUS & EXAM */
+function getLearnSignals(){return signals;}
+function nextLearn(){
+  const list=getLearnSignals();
+  if(!list.length){$("learnNoImage").textContent="Keine Signale.";return;}
+  current=list[Math.floor(Math.random()*list.length)];
+  $("learnShort").value=""; $("learnLong").value=""; $("learnMeaning").value="";
+  $("learnFeedback").hidden=true; $("nextLearn").hidden=true;
+  $("checkLearn").disabled=false;
+  setRulebookIndicator($("learnRulebookIndicator"),current);
+  setImage($("learnImage"),$("learnNoImage"),current.image);
+}
+function checkLearn(){
+  if(!current)return;
+  const ok=($("learnMeaning").value.trim().toLowerCase()===current.meaning.toLowerCase());
+  $("learnFeedback").textContent=ok?"Richtig!":"Falsch!";
+  $("learnFeedback").hidden=false;
+  $("checkLearn").disabled=true; $("nextLearn").hidden=false;
+}
+
+function setRulebookIndicator(element,signal){
+  if(!element)return;
+  const value=signal?.regelwerk;
+  element.textContent=value==="DS301"?"Abgefragtes Regelwerk: DS 301":value==="DV301"?"Abgefragtes Regelwerk: DV 301":"Regelwerk: Nicht zugeordnet";
+  element.hidden=false;
+}
+
+function setImage(img,placeholder,src){
+  if(src){img.src=src; img.hidden=false; placeholder.hidden=true;}
+  else{img.hidden=true; placeholder.hidden=false;}
+}
+
+/* Tutorials richten sich nach der bestätigten Rolle im TEST-Konto. */
+function renderRoleTutorial(){
+  const title=$("tutorialTitle"),intro=$("tutorialIntro"),content=$("tutorialContent");
+  if(!title||!intro||!content)return;
+  const role=userRole;
+  const step=(heading,description)=>`<div class="tutorial-step"><h3>${heading}</h3><p>${description}</p></div>`;
+  title.textContent=role==="admin"?"📖 Administrator-Tutorial":role==="trainer"?"📖 Trainer-Tutorial":"📖 Benutzer-Tutorial";
+  intro.textContent=role==="admin"?"Alle Benutzer-, Trainer- und Administratorfunktionen":role==="trainer"?"Deine Benutzer- und Trainerfunktionen":"Deine Funktionen als normaler Benutzer";
+  let html="";
+  html+=step("📚 Lernen","Unter Lernen kannst du die Signalgruppen über „Signalgruppen auswählen“ aufklappen und einzeln anhaken. Mit „Alle auswählen“ markierst du alle Gruppen. Beantworte Kurzbezeichnung, Langbezeichnung und Bedeutung und prüfe deine Antwort. Über „Nur falsch beantwortete Signale“ kannst du gezielt üben.");
+  html+=step("📝 Prüfung","Wähle Signalgruppen und die Anzahl der Fragen aus. Starte die Prüfung und beantworte die Aufgaben. Über Prüfung abbrechen kannst du die laufende Prüfung mit Bestätigung beenden, ohne sie als abgeschlossene Prüfung zu zählen.");
+  html+=step("📊 Statistik","Unter Statistik siehst du deine beantworteten Fragen, Punkte und Prüfungsergebnisse. Dort kannst du auch deine Lernstatistik zurücksetzen.");
+  html+=step("🚦 Eigene Signale verwalten","In Verwaltung kannst du Signale mit Kurzbezeichnung, Langbezeichnung, Bedeutung und Kategorie anlegen. Bilder lassen sich über Kamera oder Galerie hinzufügen. Vorhandene Signale kannst du bearbeiten, einzeln oder mehrfach auswählen, teilen und löschen.");
+  html+=step("💾 Datensicherung","Mit „Daten exportieren“ lädst du deine Signale als JSON-Sicherung herunter. Über „Daten importieren“ kannst du eine Sicherung wieder einlesen. Ein erneuter Import kann Duplikate erzeugen.");
+  html+=step("👥 Freunde und Lerngruppen","Im Seitenmenü kannst du Freunde per E-Mail einladen und Anfragen annehmen. Neue Anfragen erscheinen mit einer Zahl bei Freunde. Unter Lerngruppen kannst du selbst Gruppen erstellen und Mitglieder einladen.");
+  html+=step("💬 Freundesnachrichten","Unter Freundesnachrichten schreibst du privat mit bestätigten Freunden. Neue Nachrichten erscheinen mit einer Zahl. Das Support- und Trainerpostfach bleibt getrennt.");
+  html+=step("🗂️ Karteikarten","Erstelle private Karteikartensätze, lerne sie und teile sie gezielt per E-Mail.");
+  html+=step("📨 Signale teilen","Beim Teilen eines Signals kannst du die E-Mail-Adresse eingeben. Bereits beim Tippen erscheinen Vorschläge aus deinen bestätigten Freunden.");
+  html+=step("🎓 An Kursen teilnehmen","Im Menü „Kurse“ findest du Kurse, denen du zugeordnet bist. Dort kannst du Lernmaterialien und Aufgaben ansehen und Hausaufgaben abgeben, sofern diese angeboten werden.");
+  html+=step("📬 Nachrichten, geteilte Signale und Support","Im Postfach liest du Nachrichten. Unter „Geteilte Signale“ kannst du empfangene Signale übernehmen. Im Support-Bereich kannst du Fragen, Probleme und Vorschläge senden.");
+  html+=step("🎓 Trainer-Status beantragen","Im Seitenmenü kannst du den Trainer-Status beantragen. Erst nach Freischaltung stehen die zusätzlichen Trainerfunktionen zur Verfügung.");
+  if(role==="trainer"||role==="admin"){
+    html+=step("🎓 Eigene Kurse erstellen","Unter „Kurse“ kannst du einen neuen Kurs anlegen, öffnen und Schüler per E-Mail hinzufügen. Im Kurs verwaltest du die Teilnehmer und Schulungsinhalte.");
+    html+=step("📄 Lernmaterial und Hausaufgaben","In deinen Kursen kannst du Aufgaben und Dokumente hochladen sowie Hausaufgaben mit Abgabefrist erstellen. Schüler können ihre Abgaben über den Kurs einreichen.");
+    html+=step("📢 Trainer-Nachrichten","Im Kurs kannst du Nachrichten und Bildschirm-Popups an Kursteilnehmer senden. Die zugehörigen Nachrichten findest du in der Kursansicht.");
+  }
+  if(role==="admin"){
+    html+=step("🛡️ Trainer-Anträge","In Verwaltung siehst du Anträge auf Trainer-Freischaltung. Du kannst sie bestätigen oder ablehnen.");
+    html+=step("📈 Nutzerstatistik","Im Administrationsbereich der Verwaltung findest du die Zahlen zu aktiven und registrierten Nutzern und kannst sie aktualisieren.");
+    html+=step("📨 Support verwalten","Unter Verwaltung kannst du eingegangene Support-Anfragen ansehen und beantworten.");
+    html+=step("📢 Bildschirm-Nachrichten senden","Über die Administrator-Funktion kannst du eine Nachricht an alle registrierten Nutzer oder an ausgewählte E-Mail-Adressen senden.");
+  }
+  content.innerHTML=html;
+}
+
+/* KARTEIKARTEN: private Sets, gezielte E-Mail-Freigabe */
+let fcSets=[],fcCards=[],fcCurrentSet=null,fcStudyCards=[],fcStudyIndex=0,fcRevealed=false;
+const fcEsc=v=>esc(v??"");
+async function fcLoadAll(){
+ if(!currentUser)return;
+ $("fcMySets").innerHTML='<p class="muted">Lade …</p>';
+ try{
+  const [setsRes,sharedRes]=await Promise.all([
+   _supabase.from("flashcard_sets").select("*").eq("user_id",currentUser.id).order("updated_at",{ascending:false}),
+   _supabase.from("shared_flashcard_sets").select("*").eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending").order("created_at",{ascending:false})
+  ]);
+  if(setsRes.error)throw setsRes.error;if(sharedRes.error)throw sharedRes.error;
+  fcSets=setsRes.data||[];
+  $("fcMySets").innerHTML=fcSets.map(x=>`<div class="signal-card"><h3>${fcEsc(x.title)}</h3><p class="muted">${fcEsc(x.description||"")}</p><div class="actions"><button class="primary fc-edit" data-id="${x.id}">Bearbeiten</button><button class="fc-study" data-id="${x.id}">Lernen</button><button class="fc-share" data-id="${x.id}">Per E-Mail teilen</button><button class="danger fc-delete-set" data-id="${x.id}">Löschen</button></div></div>`).join("")||'<p class="muted">Noch keine Kartensätze erstellt.</p>';
+  $("fcSharedSets").innerHTML=(sharedRes.data||[]).map(x=>`<div class="signal-card"><h3>${fcEsc(x.set_data?.title||"Geteilter Kartensatz")}</h3><p class="muted">Von: ${fcEsc(x.sender_email)}</p><div class="actions"><button class="good fc-accept" data-id="${x.id}">In meine Sammlung übernehmen</button><button class="danger fc-dismiss" data-id="${x.id}">Entfernen</button></div></div>`).join("")||'<p class="muted">Keine offenen Freigaben.</p>';
+ }catch(e){$("fcMySets").textContent="Karteikarten konnten nicht geladen werden: "+e.message;}
+}
+async function fcCreateSet(){
+ const title=$("fcSetTitle").value.trim(),description=$("fcSetDescription").value.trim();
+ if(!title)return notify("Bitte einen Namen für den Kartensatz eingeben.");
+ const {data,error}=await _supabase.from("flashcard_sets").insert({user_id:currentUser.id,title,description}).select().single();
+ if(error)return notify("Kartensatz konnte nicht erstellt werden: "+error.message);
+ $("fcSetTitle").value="";$("fcSetDescription").value="";await fcLoadAll();fcOpenEditor(data.id);
+}
+async function fcOpenEditor(id){
+ const set=fcSets.find(x=>String(x.id)===String(id));if(!set)return;
+ fcCurrentSet=set;$("fcEditingSetId").value=id;$("fcEditorTitle").textContent="Bearbeiten: "+set.title;$("fcEditorPanel").hidden=false;$("fcStudyPanel").hidden=true;await fcLoadCards();$("fcEditorPanel").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function fcLoadCards(){
+ if(!fcCurrentSet)return;
+ const {data,error}=await _supabase.from("flashcards").select("*").eq("set_id",fcCurrentSet.id).order("created_at");
+ if(error)return notify("Karten konnten nicht geladen werden: "+error.message);
+ fcCards=data||[];
+ $("fcCardsList").innerHTML=fcCards.map((c,i)=>`<div class="signal-card"><strong>${i+1}. ${fcEsc(c.question)}</strong><p>${fcEsc(c.answer)}</p>${c.image_url?`<img src="${fcEsc(c.image_url)}" alt="Kartenbild" style="max-width:100%;max-height:130px">`:""}<button class="danger fc-delete-card" data-id="${c.id}">Karte löschen</button></div>`).join("")||'<p class="muted">Noch keine Karten in diesem Satz.</p>';
+}
+async function fcAddCard(){
+ if(!fcCurrentSet)return;
+ const question=$("fcQuestion").value.trim(),answer=$("fcAnswer").value.trim(),image_url=$("fcImageUrl").value.trim();
+ if(!question||!answer)return notify("Bitte Vorder- und Rückseite ausfüllen.");
+ if(image_url&&!/^https:\/\//i.test(image_url))return notify("Bitte eine sichere HTTPS-Bildadresse verwenden.");
+ const {error}=await _supabase.from("flashcards").insert({set_id:fcCurrentSet.id,user_id:currentUser.id,question,answer,image_url:image_url||null});
+ if(error)return notify("Karte konnte nicht gespeichert werden: "+error.message);
+ $("fcQuestion").value="";$("fcAnswer").value="";$("fcImageUrl").value="";await fcLoadCards();notify("Karte gespeichert.");
+}
+async function fcStartStudy(id){
+ const set=fcSets.find(x=>String(x.id)===String(id));if(!set)return;
+ const {data,error}=await _supabase.from("flashcards").select("*").eq("set_id",id).order("created_at");
+ if(error)return notify("Lernen konnte nicht gestartet werden: "+error.message);
+ if(!data?.length)return notify("Dieser Kartensatz enthält noch keine Karten.");
+ fcCurrentSet=set;fcStudyCards=data;fcStudyIndex=0;fcRevealed=false;$("fcEditorPanel").hidden=true;$("fcStudyPanel").hidden=false;$("fcStudyTitle").textContent=set.title;fcRenderStudy();$("fcStudyPanel").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function fcRenderStudy(){
+ if(fcStudyIndex>=fcStudyCards.length){$("fcStudyFace").textContent="Geschafft! Du hast alle Karten durchgesehen.";$("fcStudyImage").hidden=true;$("fcStudyHint").textContent="";$("fcStudyProgress").textContent=fcStudyCards.length+" Karten gelernt";$("fcAgain").hidden=true;$("fcKnown").hidden=true;return;}
+ const c=fcStudyCards[fcStudyIndex];$("fcStudyFace").textContent=fcRevealed?c.answer:c.question;$("fcStudyImage").src=fcRevealed?(c.image_url||""):"";$("fcStudyImage").hidden=!(fcRevealed&&c.image_url);$("fcStudyHint").textContent=fcRevealed?"Rückseite / Antwort":"Vorderseite / Frage – zum Umdrehen tippen";$("fcStudyProgress").textContent=`Karte ${fcStudyIndex+1} von ${fcStudyCards.length}`;$("fcFlip").textContent=fcRevealed?"Frage anzeigen":"Antwort aufdecken";$("fcAgain").hidden=!fcRevealed;$("fcKnown").hidden=!fcRevealed;
+}
+function fcFlip(){fcRevealed=!fcRevealed;fcRenderStudy();}
+async function fcRate(known){
+ if(!fcRevealed)return notify("Decke zuerst die Antwort auf.");
+ const c=fcStudyCards[fcStudyIndex];
+ const {data:old,error:readError}=await _supabase.from("flashcard_progress").select("known_count,again_count").eq("user_id",currentUser.id).eq("card_id",c.id).maybeSingle();
+ if(readError)return notify("Lernfortschritt konnte nicht gespeichert werden: "+readError.message);
+ const row={user_id:currentUser.id,card_id:c.id,known_count:(old?.known_count||0)+(known?1:0),again_count:(old?.again_count||0)+(known?0:1),last_seen_at:new Date().toISOString()};
+ const {error}=await _supabase.from("flashcard_progress").upsert(row,{onConflict:"user_id,card_id"});
+ if(error)return notify("Lernfortschritt konnte nicht gespeichert werden: "+error.message);
+ if(!known)fcStudyCards.push(c);fcStudyIndex++;fcRevealed=false;fcRenderStudy();
+}
+async function fcShare(id){
+ const set=fcSets.find(x=>String(x.id)===String(id));if(!set)return;
+ const email=prompt("An welche E-Mail-Adresse soll der Kartensatz geteilt werden?");if(email===null)return;
+ const recipient_email=email.trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient_email))return notify("Bitte eine gültige E-Mail-Adresse eingeben.");
+ const {data:cards,error:cardsError}=await _supabase.from("flashcards").select("question,answer,image_url").eq("set_id",id).order("created_at");if(cardsError)return notify(cardsError.message);if(!cards?.length)return notify("Ein leerer Kartensatz kann nicht geteilt werden.");
+ const {error}=await _supabase.from("shared_flashcard_sets").insert({sender_id:currentUser.id,sender_email:currentUser.email.toLowerCase(),recipient_email,set_data:{title:set.title,description:set.description||"",cards}});
+ if(error)return notify("Teilen fehlgeschlagen: "+error.message);notify("Kartensatz wurde per E-Mail-Adresse freigegeben.");
+}
+async function fcAccept(id){
+ const {data:share,error}=await _supabase.from("shared_flashcard_sets").select("*").eq("id",id).eq("recipient_email",currentUser.email.toLowerCase()).eq("status","pending").single();if(error)return notify("Freigabe nicht gefunden: "+error.message);
+ const payload=share.set_data;if(!payload||!Array.isArray(payload.cards))return notify("Der geteilte Kartensatz ist beschädigt.");
+ const {data:set,error:setError}=await _supabase.from("flashcard_sets").insert({user_id:currentUser.id,title:payload.title||"Geteilter Kartensatz",description:payload.description||""}).select().single();if(setError)return notify(setError.message);
+ const rows=payload.cards.map(c=>({set_id:set.id,user_id:currentUser.id,question:c.question,answer:c.answer,image_url:c.image_url||null}));
+ const {error:insertError}=await _supabase.from("flashcards").insert(rows);if(insertError){await _supabase.from("flashcard_sets").delete().eq("id",set.id);return notify("Karten konnten nicht übernommen werden: "+insertError.message);}
+ const {error:updateError}=await _supabase.from("shared_flashcard_sets").update({status:"accepted"}).eq("id",id).eq("recipient_email",currentUser.email.toLowerCase());if(updateError)return notify("Übernommen, aber Freigabe-Status konnte nicht aktualisiert werden: "+updateError.message);
+ notify("Kartensatz in deine Sammlung übernommen.");await fcLoadAll();
+}
+document.addEventListener("click",async e=>{
+ const b=e.target.closest("button");if(!b)return;
+ try{
+  if(b.id==="fcCreateSet")await fcCreateSet();
+  else if(b.id==="fcAddCard")await fcAddCard();
+  else if(b.classList.contains("fc-edit"))await fcOpenEditor(b.dataset.id);
+  else if(b.classList.contains("fc-study"))await fcStartStudy(b.dataset.id);
+  else if(b.classList.contains("fc-share"))await fcShare(b.dataset.id);
+  else if(b.classList.contains("fc-delete-card")){if(confirm("Karte wirklich löschen?")){const {error}=await _supabase.from("flashcards").delete().eq("id",b.dataset.id).eq("user_id",currentUser.id);if(error)throw error;await fcLoadCards();}}
+  else if(b.classList.contains("fc-delete-set")){if(confirm("Kartensatz und alle Karten wirklich löschen?")){const {error}=await _supabase.from("flashcard_sets").delete().eq("id",b.dataset.id).eq("user_id",currentUser.id);if(error)throw error;$("fcEditorPanel").hidden=true;await fcLoadAll();}}
+  else if(b.classList.contains("fc-accept"))await fcAccept(b.dataset.id);
+  else if(b.classList.contains("fc-dismiss")){const {error}=await _supabase.from("shared_flashcard_sets").delete().eq("id",b.dataset.id).eq("recipient_email",currentUser.email.toLowerCase());if(error)throw error;await fcLoadAll();}
+ }catch(err){notify("Aktion fehlgeschlagen: "+err.message);}
+});
+$("fcFlip").addEventListener("click",fcFlip);
+$("fcStudyCard").addEventListener("click",fcFlip);
+$("fcStudyCard").addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();fcFlip();}});
+$("fcAgain").addEventListener("click",()=>fcRate(false));
+$("fcKnown").addEventListener("click",()=>fcRate(true));
+$("fcStopStudy").addEventListener("click",()=>{$("fcStudyPanel").hidden=true;});
+$("fcCancelEdit").addEventListener("click",()=>{$("fcEditorPanel").hidden=true;});
+
+
+/* NAVIGATION */
+function showPage(page){
+  ["learn","exam","stats","manage","tutorial","support","inbox","shared","friends","friendChat","studyGroups","groupDetail","courses","courseDetail","flashcards","imprint"].forEach(id=>{
+    const v=(id===page);
+    const el=$(id);
+    if(el){el.hidden=!v; el.style.display=v?"block":"none";}
+  });
+  document.querySelectorAll("#mainNav button, .sidebar-link").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.page===page);
+  });
+  if(page==="friends")loadFriends();
+  if(page==="friendChat"){loadFriends().then(loadFriendChat);}
+  if(page==="studyGroups")loadStudyGroups();
+  if(page==="courses")loadCourses();
+  if(page==="flashcards")fcLoadAll();
+
+  if(page==="inbox")loadUserInbox(true);
+  if(page==="shared")loadSharedSignals();
+  if(page==="stats")renderLearningStats();
+  window.scrollTo(0,0);
+}
+
+
+/* DATENSICHERUNG: Export und Import ausschließlich im angemeldeten TEST-Konto. */
+function exportSignalData(){
+  if(!currentUser)return notify("Bitte zuerst anmelden.");
+  if(exportRunning)return;
+  exportRunning=true;
+  const button=$("exportData");
+  button.disabled=true;
+  try{
+    const data={format:"byarmando-signals",version:1,exported_at:new Date().toISOString(),signals:signals.map(s=>({
+      short:s.short||"",long:s.long||"",meaning:s.meaning||"",category:getSignalCategories(s),regelwerk:s.regelwerk||null,image:s.image||""
+    }))};
+    const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json;charset=utf-8"});
+    const url=URL.createObjectURL(blob);
+    const link=document.createElement("a");
+    link.href=url;
+    link.download="GleisCampus_Signale_Backup_"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    notify(data.signals.length+" Signale als Sicherungsdatei exportiert.");
+  }catch(err){console.error("Export:",err);notify("Export fehlgeschlagen: "+err.message);}
+  finally{exportRunning=false;button.disabled=false;}
+}
+
+// Komprimiert auch Bilder aus älteren, sehr großen JSON-Sicherungen.
+async function compressBackupImage(dataUrl){
+  const img=new Image();
+  await new Promise((resolve,reject)=>{
+    img.onload=resolve;
+    img.onerror=()=>reject(new Error("Ein Bild aus der Sicherung konnte nicht gelesen werden."));
+    img.src=dataUrl;
+  });
+  if(!img.naturalWidth||!img.naturalHeight)throw new Error("Ungültiges Bild in der Sicherung.");
+  let maxSide=900,quality=0.75,result="";
+  for(let attempt=0;attempt<9;attempt++){
+    const scale=Math.min(1,maxSide/Math.max(img.naturalWidth,img.naturalHeight));
+    const canvas=document.createElement("canvas");
+    canvas.width=Math.max(1,Math.round(img.naturalWidth*scale));
+    canvas.height=Math.max(1,Math.round(img.naturalHeight*scale));
+    const ctx=canvas.getContext("2d");
+    if(!ctx)throw new Error("Bildkomprimierung wird auf diesem Gerät nicht unterstützt.");
+    ctx.fillStyle="#ffffff";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    result=canvas.toDataURL("image/jpeg",quality);
+    if(result.length<180000)return result;
+    maxSide=Math.max(250,Math.round(maxSide*0.78));
+    quality=Math.max(0.35,quality-0.07);
+  }
+  if(result.length>240000)throw new Error("Ein Bild konnte nicht ausreichend verkleinert werden.");
+  return result;
+}
+
+let importRunning=false;
+async function importSignalData(file){
+  if(!file||!currentUser||importRunning)return;
+  const button=$("importButton");
+  importRunning=true;
+  button.disabled=true;
+  try{
+    // Große Sicherungen mit eingebetteten Bildern sind erlaubt. Eine sehr hohe
+    // Sicherheitsgrenze schützt vor versehentlichem Laden riesiger Dateien.
+    if(file.size>350*1024*1024)throw new Error("Die Sicherung ist über 350 MB groß. Bitte in kleinere Sicherungen aufteilen.");
+    if(file.size>100*1024*1024 && !confirm("Diese Sicherung ist "+Math.round(file.size/1024/1024)+" MB groß. Das Einlesen kann auf dem Gerät viel Speicher benötigen. Fortfahren?"))return;
+    notify("Sicherungsdatei wird eingelesen …");
+    const text=await file.text();
+    let parsed;
+    try{parsed=JSON.parse(text);}catch(_){throw new Error("Die Datei enthält kein gültiges JSON.");}
+    const rows=Array.isArray(parsed)?parsed:parsed?.signals;
+    if(!Array.isArray(rows))throw new Error("Keine Signalliste gefunden. Bitte eine GleisCampus-JSON-Sicherung auswählen (bisherige ByArmando-Sicherungen funktionieren ebenfalls).");
+    if(rows.length>5000)throw new Error("Zu viele Signale in einer Datei (maximal 5000).");
+    const clean=rows.map((s,i)=>{
+      if(!s||typeof s!=="object")throw new Error("Ungültiges Signal an Position "+(i+1));
+      const short=String(s.short??s.short_name??"").trim();
+      const long=String(s.long??s.long_name??"").trim();
+      const meaning=String(s.meaning??"").trim();
+      const category=JSON.stringify(Array.isArray(s.category)?[...new Set(s.category.map(v=>String(v).trim()).filter(Boolean))]:getSignalCategories({category:String(s.category||"Sonstige").trim()}));
+      const image=String(s.image??s.image_url??"").trim();
+      if(!short||!long||!meaning)throw new Error("Bei Signal "+(i+1)+" fehlen Kurzbezeichnung, Langbezeichnung oder Bedeutung.");
+      // Große eingebettete Bilder werden nach dem Einlesen einzeln komprimiert.
+      const regelwerk=["DS301","DV301"].includes(s.regelwerk)?s.regelwerk:null;
+      return {short,long,meaning,category,regelwerk,image,user_id:currentUser.id};
+    });
+    if(!clean.length)return notify("Die Sicherungsdatei enthält keine Signale.");
+    if(!confirm(clean.length+" Signale importieren? Große Bilder werden automatisch verkleinert. Bestehende Signale bleiben erhalten. Doppelte Einträge können entstehen."))return;
+    let added=0;
+    for(const item of clean){
+      if(item.image.startsWith("data:image/") && item.image.length>180000){
+        item.image=await compressBackupImage(item.image);
+      }
+      if(item.image.length>240000 && item.image.startsWith("data:")){
+        throw new Error("Bild eines Signals konnte nicht ausreichend komprimiert werden (nach "+added+" Importen).");
+      }
+      const {error}=await _supabase.from("signals").insert([item]);
+      if(error){
+        await loadCloudSignals();
+        throw new Error("Nach "+added+" von "+clean.length+" Signalen abgebrochen: "+error.message);
+      }
+      added++;
+      if(added===1||added%10===0||added===clean.length){
+        notify("Import läuft: "+added+" von "+clean.length+" Signalen …");
+        await new Promise(resolve=>setTimeout(resolve,0));
+      }
+    }
+    await loadCloudSignals();
+    notify(added+" Signale erfolgreich importiert!");
+  }catch(err){console.error("Import:",err);notify("Import fehlgeschlagen: "+err.message);}
+  finally{button.disabled=false;importRunning=false;$("importFile").value="";}
+}
+
+function initEvents(){
+  $("showRegisterBtn").addEventListener("click",()=>switchAuthView("registerView"));
+  $("showForgotBtn").addEventListener("click",()=>switchAuthView("forgotView"));
+  $("backToLoginFromReg").addEventListener("click",()=>switchAuthView("loginView"));
+  $("backToLoginFromForgot").addEventListener("click",()=>switchAuthView("loginView"));
+
+  $("loginBtn").addEventListener("click",handleLogin);
+  $("registerBtn").addEventListener("click",handleRegister);
+  $("logoutBtn").addEventListener("click",handleLogout);
+
+  $("menuBtn").addEventListener("click",()=>{$("sidebar").classList.add("open");$("sidebarBackdrop").hidden=false;});
+  $("closeSidebar").addEventListener("click",()=>{$("sidebar").classList.remove("open");$("sidebarBackdrop").hidden=true;});
+  $("sidebarBackdrop").addEventListener("click",()=>{$("sidebar").classList.remove("open");$("sidebarBackdrop").hidden=true;});
+
+  $("sidebar").addEventListener("click",e=>{
+    const btn=e.target.closest(".sidebar-link[data-page]");
+    if(btn){$("sidebar").classList.remove("open");$("sidebarBackdrop").hidden=true;showPage(btn.dataset.page);}
+  });
+
+  $("closePopupBtn").addEventListener("click",markBroadcastAsRead);
+  $("sendFriendRequestBtn").addEventListener("click",sendFriendRequest);
+  $("refreshFriends").addEventListener("click",loadFriends);
+  $("chatFriend").addEventListener("change",loadFriendChat);
+  $("sendChat").addEventListener("click",sendFriendChat);
+  $("refreshChat").addEventListener("click",loadFriendChat);
+  $("cancelShareDialog").addEventListener("click",closeShareDialog);
+  $("confirmShareDialog").addEventListener("click",confirmShareDialog);
+  $("shareDialog").addEventListener("close",()=>{sharePendingSignals=[];});
+  $("resetStats").addEventListener("click",()=>{
+    if(!confirm("Statistik und Fehlerliste wirklich zurücksetzen?"))return;
+    stats={answered:0,points:0,exams:0,lastExam:null};wrongSignalIds.clear();
+    saveLocalProgress();notify("Statistik zurückgesetzt.");
+  });
+  $("showCreateGroupBtn").addEventListener("click",()=>{$("createGroupForm").hidden=false;});
+  $("cancelCreateGroup").addEventListener("click",()=>{$("createGroupForm").hidden=true;});
+  $("createGroupSubmit").addEventListener("click",createStudyGroup);
+
+  $("createCourseBtn").addEventListener("click",()=>{$("createCourseForm").hidden=false;});
+  $("cancelCreateCourse").addEventListener("click",()=>{$("createCourseForm").hidden=true;});
+  $("submitCreateCourse").addEventListener("click",createCourse);
+
+  $("backToGroups").addEventListener("click",()=>showPage("studyGroups"));
+  $("backToCourses").addEventListener("click",()=>showPage("courses"));
+
+  $("sendSupportBtn").addEventListener("click",sendSupportMessage);
+  $("refreshInboxBtn").addEventListener("click",()=>loadUserInbox(true));
+
+  $("mainNav").addEventListener("click",e=>{
+    const btn=e.target.closest("button[data-page]");
+    if(btn)showPage(btn.dataset.page);
+  });
+
+  $("checkLearn").addEventListener("click",checkLearn);
+  $("learnModeText").addEventListener("click",()=>setLearnAnswerMode("text"));
+  $("learnModeChoice").addEventListener("click",()=>setLearnAnswerMode("choice"));
+  $("nextLearn").addEventListener("click",nextLearn);
+  $("skipLearn").addEventListener("click",nextLearn);
+
+  $("saveSignal").addEventListener("click",saveSignal);
+  $("clearForm").addEventListener("click",clearForm);
+  $("searchSignals").addEventListener("input",renderList);
+  $("signalList").addEventListener("change",e=>{
+    const cb=e.target.closest(".select-one-signal");
+    if(!cb)return;
+    if(cb.checked)selectedSignalIds.add(String(cb.dataset.id));
+    else selectedSignalIds.delete(String(cb.dataset.id));
+    cb.closest(".signal-card").classList.toggle("selected",cb.checked);
+    updateBulkToolbar();
+  });
+  $("selectAllSignals").addEventListener("change",e=>{
+    visibleSignals().forEach(s=>{
+      if(e.target.checked)selectedSignalIds.add(String(s.id));
+      else selectedSignalIds.delete(String(s.id));
+    });
+    renderList();
+  });
+  $("clearSelection").addEventListener("click",()=>{selectedSignalIds.clear();renderList();});
+  $("deleteSelected").addEventListener("click",deleteSelectedSignals);
+  $("shareSelected").addEventListener("click",shareSelectedSignals);
+  $("exportData").addEventListener("click",exportSignalData);
+  $("importButton").addEventListener("click",()=>$("importFile").click());
+  $("importFile").addEventListener("change",e=>importSignalData(e.target.files?.[0]));
+
+  // Der Aktualisieren-Button lädt jetzt die Nutzerstatistik
+  $("refreshAdminStats").addEventListener("click",loadAdminStats);
+}
+
+/* Aktivität nach Rückkehr in die App aktualisieren */
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="visible"&&currentUser){
+    updateLastSeen();
+  }
+});
+
+/* ===== REPARATUR: KATEGORIEN, LERNEN, BILDER ===== */
+
+function selectedSignalFormCategoriesSafe(){
+  const box=$("signalCategoryChoices");
+  return box?[...box.querySelectorAll('input[type="checkbox"]:checked')].map(el=>el.value):[];
+}
+function repairCategories(){
+  const currentFormCategories=selectedSignalFormCategoriesSafe();
+  renderSignalCategoryChoices(currentFormCategories);
+  const categories=[...new Set([
+    ...BASE_CATEGORIES,
+    ...signals.flatMap(s=>getSignalCategories(s))
+  ])];
+
+  const selected=[...selectedLearnCategories];
+  const box=$("learnCategoryChoices");
+
+  box.innerHTML=categories.map(c=>`
+    <label class="category-option">
+      <input type="checkbox" value="${esc(c)}"
+        ${selected.includes(c)?"checked":""}>
+      <span>${esc(CATEGORY_LABELS[c]||c)}</span>
+    </label>
+  `).join("");
+
+  $("learnCategorySummary").textContent=
+    selectedLearnCategories.size+" Signalgruppen ausgewählt";
+
+  $("learnAvailable").textContent=getLearnSignals().length;
+  renderExamCategories();
+}
+function renderExamCategories(){
+  const categories=[...new Set([...BASE_CATEGORIES,...signals.flatMap(s=>getSignalCategories(s))])];
+  $("examCategoryChoices").innerHTML=categories.map(c=>`<label class="category-option"><input type="checkbox" value="${esc(c)}" ${selectedExamCategories.has(c)?"checked":""}><span>${esc(CATEGORY_LABELS[c]||c)}</span></label>`).join("");
+  $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
+  $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
+}
+
+function ruleFilterAllows(signal,mode){
+  const value=signal.regelwerk||"UNASSIGNED";
+  if(value==="DS301")return $(mode+"Ds301").checked;
+  if(value==="DV301")return $(mode+"Dv301").checked;
+  return $(mode+"Unassigned").checked;
+}
+function getLearnSignals(){
+  return signals.filter(s=>
+    getSignalCategories(s).some(c=>selectedLearnCategories.has(c)) &&
+    ruleFilterAllows(s,"learn") &&
+    (!$("onlyWrongFilter").checked || wrongSignalIds.has(s.id))
+  );
+}
+function getExamSignals(){
+  return signals.filter(s=>
+    getSignalCategories(s).some(c=>selectedExamCategories.has(c)) && ruleFilterAllows(s,"exam")
+  );
+}
+
+function setLearnAnswerMode(mode){
+  learnAnswerMode=mode;
+  $("learnTextMode").hidden=mode!=="text";
+  $("learnChoiceMode").hidden=mode!=="choice";
+  $("learnModeText").classList.toggle("primary",mode==="text");
+  $("learnModeChoice").classList.toggle("primary",mode==="choice");
+  if(current && mode==="choice")renderLearnChoices();
+}
+function makeLearnChoices(field){
+  const correct=String(current?.[field]||"").trim();
+  if(!correct)return [];
+  const pool=[...new Set(signals.map(s=>String(s?.[field]||"").trim()).filter(v=>v&&v!==correct))];
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  const choices=[correct,...pool.slice(0,3)];
+  for(let i=choices.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[choices[i],choices[j]]=[choices[j],choices[i]];}
+  return choices;
+}
+function renderLearnChoices(){
+  if(!current)return;
+  const fields=[['short','Kurzbezeichnung'],['long','Langbezeichnung'],['meaning','Bedeutung']];
+  learnChoiceSets=fields.map(([field,label])=>({field,label,choices:makeLearnChoices(field)}));
+  $("learnChoiceQuestions").innerHTML=learnChoiceSets.map((q,index)=>`<fieldset class="choice-question" style="border:1px solid var(--border,#ccc);border-radius:12px;padding:12px;margin:12px 0;"><legend><b>${index+1}. ${q.label}</b></legend>${q.choices.map((choice,i)=>`<label class="choice-option" style="display:flex;gap:9px;align-items:flex-start;padding:9px 4px;cursor:pointer;"><input type="radio" name="learnChoice${index}" value="${i}" style="margin-top:3px;flex:0 0 auto;"><span>${esc(choice)}</span></label>`).join('')}</fieldset>`).join('');
+}
+function checkLearnChoices(){
+  const unanswered=learnChoiceSets.some((q,index)=>!document.querySelector(`input[name="learnChoice${index}"]:checked`));
+  if(unanswered){notify("Bitte beantworte alle drei Fragen.");return;}
+  const results=learnChoiceSets.map((q,index)=>{
+    const selected=Number(document.querySelector(`input[name="learnChoice${index}"]:checked`).value);
+    const answer=q.choices[selected];
+    return {label:q.label,correct:answer===String(current[q.field]||"").trim(),answer,expected:current[q.field]};
+  });
+  const correct=results.every(r=>r.correct);
+  stats.answered++;
+  if(correct){stats.points++;wrongSignalIds.delete(current.id);}else{wrongSignalIds.add(current.id);}
+  saveLocalProgress();
+  $("learnFeedback").hidden=false;
+  $("learnFeedback").innerHTML=(correct?'<strong class="correct">✓ Alle drei Antworten richtig! Punkt erhalten.</strong>':'<strong class="incorrect">✗ Nicht alle Antworten richtig – kein Punkt.</strong>')+results.map(r=>`<p><b>${r.label}:</b> <span class="${r.correct?'correct':'incorrect'}">${r.correct?'✓ Richtig':'✗ Falsch'}</span>${r.correct?'':`<br><small>Richtige Lösung: ${esc(r.expected)}</small>`}</p>`).join('');
+  $("checkLearn").disabled=true;$("nextLearn").hidden=false;
+  $("learnChoiceQuestions").querySelectorAll('input').forEach(el=>el.disabled=true);
+}
+
+function nextLearn(){
+  repairCategories();
+
+  const list=getLearnSignals();
+
+  $("learnShort").value="";
+  $("learnLong").value="";
+  $("learnMeaning").value="";
+  $("learnFeedback").hidden=true;
+  $("nextLearn").hidden=true;
+  $("checkLearn").disabled=false;
+
+  if(!list.length){
+    current=null;
+    $("learnImage").hidden=true;
+    $("learnRulebookIndicator").hidden=true;
+    $("learnNoImage").hidden=false;
+    $("learnNoImage").textContent=
+      "Keine Signale für diese Auswahl vorhanden.";
+    $("checkLearn").disabled=true;
+    return;
+  }
+
+  current=list[Math.floor(Math.random()*list.length)];
+  learnNumber++;
+
+  $("learnCounter").textContent="Frage "+learnNumber;
+  $("learnAvailable").textContent=list.length;
+
+  $("learnNoImage").textContent=
+    "Kein Bild hinterlegt – Signal anhand der Angaben üben.";
+
+  setRulebookIndicator($("learnRulebookIndicator"),current);
+  setImage($("learnImage"),$("learnNoImage"),current.image);
+  if(learnAnswerMode==="choice")renderLearnChoices();
+}
+
+function compareLearningText(expected,actual){
+  // Zeilenumbrüche und Absatzwechsel sind nur Formatierung und dürfen
+  // die inhaltliche Bewertung nicht beeinflussen.
+  const clean=v=>String(v||"").toLocaleLowerCase("de-DE")
+    .normalize("NFC")
+    .replace(/\u00ad/g,"")                 // weicher Trennstrich
+    .replace(/[\u200b-\u200d\ufeff]/g,"") // unsichtbare Copy/Paste-Zeichen
+    .replace(/\r\n?/g,"\n")
+    .replace(/[\u2028\u2029]/g,"\n")
+    .replace(/[„“”]/g,'"').replace(/[’‘]/g,"'")
+    .replace(/[\t\f\v ]+/g," ")
+    .replace(/ *\n+ */g," ")              // ein oder mehrere Absätze = Leerzeichen
+    .replace(/\s+/g," ").trim();
+  const a=clean(expected),b=clean(actual);
+  if(a===b)return {accepted:true,kind:"exact"};
+  const words=v=>v.replace(/[.,;:!?()[\]{}„“”"'’‘—–-]/g," ")
+    .replace(/\s+/g," ").trim().split(" ").filter(Boolean);
+  const wa=words(a),wb=words(b);
+  if(wa.join(" ")===wb.join(" "))return {accepted:true,kind:"punctuation"};
+  if(!wa.length||wa.length!==wb.length)return {accepted:false,kind:"wrong"};
+  const distance=(x,y)=>{
+    let prev=Array.from({length:y.length+1},(_,i)=>i);
+    for(let i=1;i<=x.length;i++){
+      const row=[i];
+      for(let j=1;j<=y.length;j++){
+        row[j]=Math.min(row[j-1]+1,prev[j]+1,prev[j-1]+(x[i-1]===y[j-1]?0:1));
+      }
+      prev=row;
+    }
+    return prev[y.length];
+  };
+  let edits=0;
+  for(let i=0;i<wa.length;i++){
+    const d=distance(wa[i],wb[i]);
+    const max=wa[i].length>=9?2:1;
+    if(d>max)return {accepted:false,kind:"wrong"};
+    edits+=d;
+  }
+  // Only small, local word-form/typing differences are tolerated.
+  const ratio=edits/Math.max(1,wa.join("").length);
+  return ratio<=0.035?{accepted:true,kind:"spelling"}:{accepted:false,kind:"wrong"};
+}
+function learningFieldFeedback(label,expected,result){
+  if(result.kind==="exact")return `<p><b>${label}:</b> <span class="correct">✓ Richtig</span></p>`;
+  if(result.kind==="punctuation")return `<p><b>${label}:</b> <span class="warning-text">⚠ Zeichensetzung prüfen</span><br><small>Richtige Schreibweise: ${esc(expected)}</small></p>`;
+  if(result.kind==="spelling")return `<p><b>${label}:</b> <span class="warning-text">⚠ Rechtschreibung/Schreibweise prüfen</span><br><small>Richtige Lösung: ${esc(expected)}</small></p>`;
+  return `<p><b>${label}:</b> <span class="incorrect">✗ Inhalt stimmt nicht ausreichend überein</span><br><small>Richtige Lösung: ${esc(expected)}</small></p>`;
+}
+function checkLearn(){
+  if(!current)return;
+  if(learnAnswerMode==="choice"){checkLearnChoices();return;}
+  const results=[
+    compareLearningText(current.short,$("learnShort").value),
+    compareLearningText(current.long,$("learnLong").value),
+    compareLearningText(current.meaning,$("learnMeaning").value)
+  ];
+  const correct=results.every(r=>r.accepted);
+  const hasWritingErrors=results.some(r=>r.kind==="punctuation"||r.kind==="spelling");
+  stats.answered++;
+  if(correct){
+    stats.points++;
+    wrongSignalIds.delete(current.id);
+  }else{
+    wrongSignalIds.add(current.id);
+  }
+  saveLocalProgress();
+  const feedback=$("learnFeedback");
+  feedback.hidden=false;
+  feedback.innerHTML=(correct
+    ?(hasWritingErrors?'<strong class="correct">✓ Inhaltlich richtig – Punkt erhalten.</strong><p>Bitte beachte die markierten Schreib- und Zeichensetzungsfehler.</p>':'<strong class="correct">✓ Alles richtig!</strong>')
+    :'<strong class="incorrect">Nicht vollständig richtig – kein Punkt.</strong>')+
+    learningFieldFeedback("Kurzbezeichnung",current.short,results[0])+
+    learningFieldFeedback("Langbezeichnung",current.long,results[1])+
+    learningFieldFeedback("Bedeutung",current.meaning,results[2]);
+  $("checkLearn").disabled=true;
+  $("nextLearn").hidden=false;
+}
+
+async function repairImageInput(file){
+  if(!file)return;
+  if(!file.type.startsWith("image/")){
+    notify("Bitte ein Foto auswählen.");
+    return;
+  }
+  // Schutz vor extrem großen Dateien; normale iPad-/Handyfotos sind erlaubt.
+  if(file.size>35*1024*1024){
+    notify("Foto ist außergewöhnlich groß (über 35 MB).");
+    return;
+  }
+  notify("Foto wird automatisch verkleinert …");
+  try{
+    const bitmapUrl=URL.createObjectURL(file);
+    const img=new Image();
+    try{
+      await new Promise((resolve,reject)=>{
+        img.onload=resolve;
+        img.onerror=()=>reject(new Error("Foto konnte nicht geöffnet werden."));
+        img.src=bitmapUrl;
+      });
+      const originalWidth=img.naturalWidth;
+      const originalHeight=img.naturalHeight;
+      if(!originalWidth||!originalHeight)throw new Error("Ungültige Bildgröße.");
+      let maxSide=900;
+      let quality=0.75;
+      let result="";
+      // Bilder werden als JPEG komprimiert, damit sie in den Signaldatensatz passen.
+      for(let attempt=0;attempt<7;attempt++){
+        const scale=Math.min(1,maxSide/Math.max(originalWidth,originalHeight));
+        const canvas=document.createElement("canvas");
+        canvas.width=Math.max(1,Math.round(originalWidth*scale));
+        canvas.height=Math.max(1,Math.round(originalHeight*scale));
+        const ctx=canvas.getContext("2d");
+        if(!ctx)throw new Error("Bildverarbeitung nicht verfügbar.");
+        ctx.fillStyle="#ffffff";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        ctx.drawImage(img,0,0,canvas.width,canvas.height);
+        result=canvas.toDataURL("image/jpeg",quality);
+        if(result.length<180000)break;
+        maxSide=Math.max(400,Math.round(maxSide*0.82));
+        quality=Math.max(0.45,quality-0.06);
+      }
+      if(result.length>=240000)throw new Error("Das Foto konnte nicht ausreichend verkleinert werden.");
+      tempImageBase64=result;
+      $("imageUrl").value="";
+      notify("Foto verkleinert und übernommen. Jetzt Signal speichern.");
+    }finally{URL.revokeObjectURL(bitmapUrl);}
+  }catch(err){
+    console.error("Bildverarbeitung:",err);
+    notify("Bildfehler: "+(err.message||err));
+  }
+}
+
+function installRepair(){
+  repairCategories();
+
+  $("pickGallery").addEventListener("click",()=>
+    $("imageFile").click()
+  );
+
+  $("pickCamera").addEventListener("click",()=>
+    $("cameraFile").click()
+  );
+
+  $("signalCategoryChoices").addEventListener("change",()=>{});
+
+  $("imageFile").addEventListener("change",e=>
+    repairImageInput(e.target.files[0])
+  );
+
+  $("cameraFile").addEventListener("change",e=>
+    repairImageInput(e.target.files[0])
+  );
+
+  $("learnCategoryChoices").addEventListener("change",e=>{
+    if(e.target.type!=="checkbox")return;
+    if(e.target.checked)
+      selectedLearnCategories.add(e.target.value);
+    else
+      selectedLearnCategories.delete(e.target.value);
+    nextLearn();
+  });
+
+  $("learnSelectAll").addEventListener("click",()=>{
+    selectedLearnCategories=new Set([
+      ...BASE_CATEGORIES,
+      ...signals.flatMap(s=>getSignalCategories(s))
+    ]);
+    nextLearn();
+  });
+
+  function setCategoryOpen(mode,open){
+    const box=$(mode+"CategoryChoices");
+    const button=$(mode+"ToggleCategories");
+    box.classList.toggle("collapsed",!open);
+    button.textContent=open?"Signalgruppen schließen ▲":"Signalgruppen auswählen ▼";
+    button.setAttribute("aria-expanded",String(open));
+    if(mode==="learn")learnCategoriesOpen=open;
+    else examCategoriesOpen=open;
+  }
+  setCategoryOpen("learn",false);
+  setCategoryOpen("exam",false);
+  $("learnToggleCategories").addEventListener("click",()=>setCategoryOpen("learn",!learnCategoriesOpen));
+  $("examToggleCategories").addEventListener("click",()=>setCategoryOpen("exam",!examCategoriesOpen));
+
+  function setRuleFilterOpen(mode,open){
+    const content=$(mode+"RuleFilterContent");
+    const button=$(mode+"RuleFilterToggle");
+    content.hidden=!open;
+    button.setAttribute("aria-expanded",String(open));
+    button.textContent=open?"Regelwerk ausblenden ▲":"Regelwerk filtern (optional) ▼";
+  }
+  ["learn","exam"].forEach(mode=>{
+    setRuleFilterOpen(mode,false);
+    $(mode+"RuleFilterToggle").addEventListener("click",()=>{
+      setRuleFilterOpen(mode,$(mode+"RuleFilterContent").hidden);
+    });
+    [mode+"Ds301",mode+"Dv301",mode+"Unassigned"].forEach(id=>$(id).addEventListener("change",()=>{
+      if(mode==="learn")nextLearn();
+      else $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
+    }));
+  });
+
+  $("examCategoryChoices").addEventListener("change",e=>{
+    if(e.target.type!=="checkbox")return;
+    if(e.target.checked)selectedExamCategories.add(e.target.value);
+    else selectedExamCategories.delete(e.target.value);
+    $("examCategorySummary").textContent=selectedExamCategories.size+" Signalgruppen ausgewählt";
+    $("examAvailable").textContent=getExamSignals().length+" Signale in der Auswahl";
+  });
+  $("examSelectAll").addEventListener("click",()=>{
+    selectedExamCategories=new Set([...BASE_CATEGORIES,...signals.flatMap(s=>getSignalCategories(s))]);
+    renderExamCategories();
+  });
+
+  $("onlyWrongFilter").addEventListener("change",nextLearn);
+
+  const observer=new MutationObserver(()=>{
+    repairCategories();
+  });
+
+  observer.observe($("signalList"),{childList:true});
+}
+
+/* ===== ENDE DER REPARATUR ===== */
+
+
+
+/* PRÜFUNGSMODUS – vollständig im TEST-Frontend */
+let examQuestions=[], examIndex=0, examCorrect=0, examStartedAt=0, examAnswered=false, examClock=null;
+function examStopClock(){if(examClock){clearInterval(examClock);examClock=null;}}
+function examTimeText(){const sec=Math.floor((Date.now()-examStartedAt)/1000);return String(Math.floor(sec/60)).padStart(2,"0")+":"+String(sec%60).padStart(2,"0");}
+function startExamSession(){
+  const pool=getExamSignals();
+  if(!selectedExamCategories.size)return notify("Bitte mindestens eine Signalgruppe auswählen.");
+  if(!pool.length)return notify("In den gewählten Signalgruppen sind keine Signale vorhanden.");
+  const wanted=Number($("examLength").value)||10;
+  if(pool.length<wanted&&!confirm("Es sind nur "+pool.length+" Signale vorhanden. Prüfung mit "+pool.length+" Fragen starten?"))return;
+  examQuestions=[...pool].sort(()=>Math.random()-.5).slice(0,Math.min(wanted,pool.length));
+  examIndex=0;examCorrect=0;examStartedAt=Date.now();examAnswered=false;
+  $("examConfig").hidden=true;$("examArea").hidden=false;$("examResult").hidden=true;
+  examStopClock();examClock=setInterval(()=>{$("examTimer").textContent=examTimeText();},1000);
+  renderExamQuestion();
+}
+function renderExamQuestion(){
+  if(examIndex>=examQuestions.length)return finishExamSession();
+  const s=examQuestions[examIndex];examAnswered=false;
+  $("examCounter").textContent="Frage "+(examIndex+1)+" von "+examQuestions.length;
+  $("examProgress").style.width=(100*examIndex/examQuestions.length)+"%";
+  $("examTimer").textContent=examTimeText();
+  $("examShort").value="";$("examLong").value="";$("examMeaning").value="";
+  $("examShort").disabled=false;$("examLong").disabled=false;$("examMeaning").disabled=false;
+  $("submitExam").disabled=false;$("submitExam").hidden=false;
+  $("examFeedback").hidden=true;$("examNext").hidden=true;
+  $("examNext").textContent=examIndex===examQuestions.length-1?"Ergebnis anzeigen ➔":"Weiter ➔";
+  setRulebookIndicator($("examRulebookIndicator"),s);
+  setImage($("examImage"),$("examNoImage"),s.image);
+}
+function submitExamAnswer(){
+  if(!examQuestions.length||examAnswered)return;
+  examAnswered=true;
+  const s=examQuestions[examIndex];
+  const results=[
+    compareLearningText(s.short,$("examShort").value),
+    compareLearningText(s.long,$("examLong").value),
+    compareLearningText(s.meaning,$("examMeaning").value)
+  ];
+  const correct=results.every(r=>r.accepted);
+  const hasWritingErrors=results.some(r=>r.kind==="punctuation"||r.kind==="spelling");
+  if(correct){examCorrect++;wrongSignalIds.delete(s.id);}else{wrongSignalIds.add(s.id);}
+  stats.answered++;if(correct)stats.points++;
+  saveLocalProgress();
+  $("examFeedback").hidden=false;
+  $("examFeedback").innerHTML=(correct
+    ?(hasWritingErrors?'<strong class="correct">✓ Inhaltlich richtig – Punkt erhalten.</strong><p>Bitte beachte die markierten Schreib- und Zeichensetzungsfehler.</p>':'<strong class="correct">✓ Vollständig richtig!</strong>')
+    :'<strong class="incorrect">Nicht vollständig richtig – kein Punkt.</strong>')+
+    learningFieldFeedback("Kurzbezeichnung",s.short,results[0])+
+    learningFieldFeedback("Langbezeichnung",s.long,results[1])+
+    learningFieldFeedback("Bedeutung",s.meaning,results[2]);
+  $("examShort").disabled=true;$("examLong").disabled=true;$("examMeaning").disabled=true;
+  $("submitExam").disabled=true;$("submitExam").hidden=true;$("examNext").hidden=false;
+}
+function finishExamSession(){
+  examStopClock();const count=examQuestions.length,percentage=count?Math.round(examCorrect/count*100):0;
+  const result={correct:examCorrect,total:count,percentage,date:new Date().toISOString(),duration:examTimeText()};
+  stats.exams=(Number(stats.exams)||0)+1;stats.lastExam=result;saveLocalProgress();
+  $("examArea").hidden=true;$("examResult").hidden=false;$("examConfig").hidden=false;
+  $("examResult").innerHTML='<h3>Prüfung beendet</h3><p><b>'+examCorrect+' von '+count+' richtig ('+percentage+' %)</b></p><p>Zeit: '+esc(result.duration)+'</p><p>Du kannst oben eine neue Prüfung starten.</p>';
+  $("examProgress").style.width="100%";examQuestions=[];
+}
+
+function init(){
+  initEvents();
+  $("startExam").addEventListener("click",startExamSession);
+  $("cancelExam").addEventListener("click",()=>{
+    if(!examQuestions.length)return;
+    if(!confirm("Prüfung wirklich abbrechen? Sie zählt nicht als abgeschlossene Prüfung."))return;
+    examStopClock();examQuestions=[];examAnswered=false;
+    $("examArea").hidden=true;$("examConfig").hidden=false;$("examResult").hidden=true;
+    notify("Prüfung abgebrochen.");
+  });
+  $("submitExam").addEventListener("click",submitExamAnswer);
+  $("examNext").addEventListener("click",()=>{examIndex++;renderExamQuestion();});
+  installRepair();
+  renderLearningStats();
+  checkSession();
+}
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",init);
+}else{
+  init();
+}
+
+})();
+</script>
+</body>
+</html>
